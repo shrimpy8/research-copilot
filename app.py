@@ -167,8 +167,8 @@ def render_sidebar():
     # Model selection - only show preferred models that are installed
     loop = get_event_loop()
     ollama = OllamaClient()
-    PREFERRED_MODELS = ["llama3.1:8b", "ministral-3:8b", "mistral:7b", "gemma3:4b"]
-    DEFAULT_MODEL = "llama3.1:8b"
+    PREFERRED_MODELS = ["ministral-3:8b", "llama3.1:8b", "mistral:7b", "gemma3:4b"]
+    DEFAULT_MODEL = "ministral-3:8b"
 
     model_options = [DEFAULT_MODEL]  # Fallback
     try:
@@ -180,7 +180,7 @@ def render_sidebar():
     except Exception:
         pass
 
-    # Default to llama3.1:8b if available
+    # Default to ministral-3:8b if available
     default_model = DEFAULT_MODEL if DEFAULT_MODEL in model_options else model_options[0]
 
     selected_model = st.selectbox(

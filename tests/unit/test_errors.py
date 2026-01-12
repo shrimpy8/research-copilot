@@ -165,9 +165,9 @@ class TestSpecificExceptions:
         """Test OllamaError includes model in details."""
         error = OllamaError(
             message="Model not found",
-            model="llama3.1:8b",
+            model="ministral-3:8b",
         )
-        assert error.details["model"] == "llama3.1:8b"
+        assert error.details["model"] == "ministral-3:8b"
 
     def test_mcp_error_with_tool(self):
         """Test MCPError includes tool in details."""

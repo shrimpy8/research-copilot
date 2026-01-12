@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # Ollama
     ollama_base_url: str = "http://localhost:11434"
-    ollama_default_model: str = "llama3.1:8b"
+    ollama_default_model: str = "ministral-3:8b"
     ollama_timeout_ms: int = 60000
     ollama_max_retries: int = 3
 

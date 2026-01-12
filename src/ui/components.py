@@ -358,7 +358,7 @@ def get_error_recovery_steps(error_code: str) -> List[str]:
         "ollama_unavailable": [
             "Check if Ollama is running: `ollama list`",
             "Start Ollama service: `ollama serve`",
-            "Verify the model is installed: `ollama pull llama3.2:3b`"
+            "Verify the model is installed: `ollama pull ministral-3:8b`"
         ],
         "mcp_server_unavailable": [
             "Check if MCP server is running",

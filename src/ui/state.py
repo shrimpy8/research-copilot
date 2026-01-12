@@ -46,7 +46,7 @@ class AppState:
     tool_traces: List[ToolTrace] = field(default_factory=list)
     current_sources: List[Dict[str, str]] = field(default_factory=list)
     research_mode: str = "quick"
-    model: str = "llama3.2:3b"
+    model: str = "ministral-3:8b"
     is_researching: bool = False
     error: Optional[str] = None
     notes_search_query: str = ""

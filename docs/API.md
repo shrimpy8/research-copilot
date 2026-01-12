@@ -57,7 +57,7 @@ Orchestrator(
 |-----------|------|---------|-------------|
 | `ollama_client` | `OllamaClient` | `None` | Custom Ollama client (creates one if not provided) |
 | `mcp_client` | `MCPClient` | `None` | Custom MCP client (creates one if not provided) |
-| `model` | `str` | Config default | LLM model to use (e.g., `llama3.2:3b`) |
+| `model` | `str` | Config default | LLM model to use (e.g., `ministral-3:8b`) |
 | `research_mode` | `str` | `"quick"` | Research mode: `"quick"` or `"deep"` |
 
 ### Methods
@@ -132,7 +132,7 @@ async def health_check() -> Dict[str, Any]
 {
     "ollama": {
         "available": True,
-        "model": "llama3.2:3b"
+        "model": "ministral-3:8b"
     },
     "mcp": {
         "available": True,
@@ -216,7 +216,7 @@ async def main():
         messages=[
             {"role": "user", "content": "Hello!"}
         ],
-        model="llama3.2:3b"
+        model="ministral-3:8b"
     )
     print(response.message.content)
 
@@ -636,7 +636,7 @@ from src.utils.config import settings
 # Access settings
 print(settings.ollama_base_url)        # http://localhost:11434
 print(settings.mcp_server_url)         # http://localhost:3001
-print(settings.ollama_default_model)   # llama3.1:8b
+print(settings.ollama_default_model)   # ministral-3:8b
 print(settings.search_provider)        # duckduckgo
 ```
 
@@ -645,7 +645,7 @@ print(settings.search_provider)        # duckduckgo
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `OLLAMA_BASE_URL` | str | `http://localhost:11434` | Ollama API URL |
-| `OLLAMA_DEFAULT_MODEL` | str | `llama3.1:8b` | Default LLM model |
+| `OLLAMA_DEFAULT_MODEL` | str | `ministral-3:8b` | Default LLM model |
 | `OLLAMA_TIMEOUT_MS` | int | `60000` | Ollama timeout |
 | `MCP_SERVER_URL` | str | `http://localhost:3001` | MCP server URL |
 | `MCP_SERVER_TIMEOUT_MS` | int | `30000` | MCP timeout |
@@ -660,7 +660,7 @@ Create `.env` in project root:
 
 ```env
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_DEFAULT_MODEL=llama3.2:3b
+OLLAMA_DEFAULT_MODEL=ministral-3:8b
 MCP_SERVER_URL=http://localhost:3001
 SEARCH_PROVIDER=duckduckgo
 LOG_LEVEL=info

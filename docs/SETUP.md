@@ -146,8 +146,8 @@ curl http://localhost:3001/health
 ollama serve
 
 # Pull a model (choose one)
-ollama pull llama3.2:3b      # Smaller, faster (2GB)
-ollama pull llama3.1:8b      # Better quality (4.7GB)
+ollama pull ministral-3:8b      # Smaller, faster (2GB)
+ollama pull ministral-3:8b      # Better quality (4.7GB)
 ollama pull mistral          # Alternative (4.1GB)
 
 # Verify model is available
@@ -158,7 +158,7 @@ ollama list
 
 ```bash
 # Quick test
-ollama run llama3.2:3b "Say hello in one word"
+ollama run ministral-3:8b "Say hello in one word"
 ```
 
 ### Step 4: Configuration
@@ -177,7 +177,7 @@ nano .env  # or your preferred editor
 
 ```env
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_DEFAULT_MODEL=llama3.2:3b
+OLLAMA_DEFAULT_MODEL=ministral-3:8b
 MCP_SERVER_URL=http://localhost:3001
 LOG_LEVEL=info
 ```
@@ -214,7 +214,7 @@ Create `.env` in project root:
 ```env
 # ===== Ollama Configuration =====
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_DEFAULT_MODEL=llama3.2:3b
+OLLAMA_DEFAULT_MODEL=ministral-3:8b
 OLLAMA_TIMEOUT_MS=60000
 
 # ===== MCP Server Configuration =====
@@ -287,7 +287,7 @@ Expected output:
 ✓ Python 3.12.0
 ✓ Required packages installed
 ✓ Ollama available at http://localhost:11434
-✓ Model llama3.2:3b available
+✓ Model ministral-3:8b available
 ✓ MCP server available at http://localhost:3001
 ✓ All 5 MCP tools available
 
@@ -385,7 +385,7 @@ curl -X POST http://localhost:3001/mcp \
 
 2. Pull the model:
    ```bash
-   ollama pull llama3.2:3b
+   ollama pull ministral-3:8b
    ```
 
 3. Check `.env` has correct model name
@@ -517,12 +517,12 @@ Configure multiple Ollama models:
 
 ```bash
 # Pull models
-ollama pull llama3.2:3b
-ollama pull llama3.1:8b
+ollama pull ministral-3:8b
+ollama pull ministral-3:8b
 ollama pull codellama
 
 # Switch in app sidebar or .env
-OLLAMA_DEFAULT_MODEL=llama3.1:8b
+OLLAMA_DEFAULT_MODEL=ministral-3:8b
 ```
 
 ---

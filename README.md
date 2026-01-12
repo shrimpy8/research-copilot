@@ -67,7 +67,7 @@ A local AI research assistant that searches, reads, summarizes, and remembers—
 
 - **Python 3.11+**
 - **Node.js 18+**
-- **Ollama** with a model installed (e.g., `llama3.1:8b`)
+- **Ollama** with a model installed (e.g., `ministral-3:8b`)
 
 ## Quick Start
 
@@ -94,7 +94,7 @@ npm start  # Runs on port 3001
 ```bash
 # In a separate terminal
 ollama serve
-ollama pull llama3.1:8b  # Or your preferred model
+ollama pull ministral-3:8b  # Or your preferred model
 ```
 
 ### 4. Run the Application
@@ -174,7 +174,7 @@ cp mcp_server/.env.example mcp_server/.env
 ```env
 # Ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_DEFAULT_MODEL=llama3.1:8b
+OLLAMA_DEFAULT_MODEL=ministral-3:8b
 
 # MCP Server
 MCP_SERVER_URL=http://localhost:3001
@@ -207,7 +207,7 @@ SERPER_API_KEY=your_key_here
 
 **Notes:**
 - Notes list pagination uses `limit` + `offset` in MCP, and the UI shows snippets for each note
-- Model selection shows 4 preferred models: `llama3.1:8b` (default), `ministral-3:8b`, `mistral:7b`, `gemma3:4b`
+- Model selection shows 4 preferred models: `ministral-3:8b` (default), `llama3.1:8b`, `mistral:7b`, `gemma3:4b`
 - Research Trail displays tool calls for the last 3 queries with per-query and aggregate statistics
 - Sidebar shows active search provider (🔍 Serper API or 🦆 DuckDuckGo)
 

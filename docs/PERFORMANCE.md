@@ -6,7 +6,7 @@
 
 ## Performance Profile
 
-Tested on: MacBook (Apple Silicon), Ollama with llama3.2:3b
+Tested on: MacBook (Apple Silicon), Ollama with ministral-3:8b
 
 ### Latency Breakdown
 
@@ -48,7 +48,7 @@ The largest contributor to latency is local LLM inference via Ollama.
 - Quantization level
 
 **Mitigations:**
-- Use smaller models for faster responses (llama3.2:3b)
+- Use smaller models for faster responses (ministral-3:8b)
 - Use GPU acceleration if available
 - Keep prompts concise
 

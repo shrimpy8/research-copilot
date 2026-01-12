@@ -312,11 +312,11 @@ client = OllamaClient()
 
 # Check if Ollama is running
 health = await client.health()
-# Returns: OllamaHealth(available=True, models=["llama3.1:8b", "mistral:7b"])
+# Returns: OllamaHealth(available=True, models=["ministral-3:8b", "mistral:7b"])
 
 # Generate a response
 response = await client.chat(
-    model="llama3.1:8b",
+    model="ministral-3:8b",
     messages=[
         {"role": "user", "content": "What is Python?"}
     ]
