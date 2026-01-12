@@ -10,12 +10,17 @@ Research Copilot is a local AI research assistant that demonstrates modern AI ag
 ┌─────────────────────────────────────────────────────────────────┐
 │                     User Interface (Streamlit)                  │
 │                                                                 │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
-│  │  Chat Panel  │    │   Sidebar    │    │  Research Trail  │  │
-│  │              │    │  - Settings  │    │  - Tool calls    │  │
-│  │  Questions   │    │  - Notes     │    │  - Timing info   │  │
-│  │  & Answers   │    │  - Status    │    │  - MCP details   │  │
-│  └──────────────┘    └──────────────┘    └──────────────────┘  │
+│  ┌──────────────┐  ┌─────────────────────────────────────────┐  │
+│  │   Sidebar    │  │          Research Trail                 │  │
+│  │              │  │          - Tool calls                   │  │
+│  │  - Settings  │  │          - Timing info                  │  │
+│  │  - Notes     │  │          - MCP details                  │  │
+│  │  - Status    │  ├─────────────────────────────────────────┤  │
+│  │              │  │          Chat Panel                     │  │
+│  │              │  │          - Questions & Answers          │  │
+│  │              │  │          - Citations                    │  │
+│  │              │  │          - Follow-up suggestions        │  │
+│  └──────────────┘  └─────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼

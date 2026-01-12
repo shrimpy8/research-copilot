@@ -19,12 +19,18 @@ A local AI research assistant that searches, reads, summarizes, and remembers—
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Streamlit UI (app.py)                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ Chat Panel  │  │   Sidebar   │  │    Research Trail       │  │
-│  │             │  │  - Settings │  │    - Tool executions    │  │
-│  │  Messages   │  │  - Notes    │  │    - Source badges      │  │
-│  │  Citations  │  │  - Modes    │  │    - Timing info        │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+│                                                                  │
+│  ┌─────────────┐  ┌───────────────────────────────────────────┐ │
+│  │   Sidebar   │  │           Research Trail                  │ │
+│  │             │  │           - Tool executions               │ │
+│  │  - Settings │  │           - Source badges                 │ │
+│  │  - Notes    │  │           - Timing info                   │ │
+│  │  - Modes    │  ├───────────────────────────────────────────┤ │
+│  │  - Status   │  │           Chat Panel                      │ │
+│  │             │  │           - Messages                      │ │
+│  │             │  │           - Citations                     │ │
+│  │             │  │           - Follow-up suggestions         │ │
+│  └─────────────┘  └───────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
