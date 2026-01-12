@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+
+# Data
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.sqlite
+data/*.sqlite3
+
+# Env
+.env
+.env.local
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Internal docs (kept locally, not in repo)
+CLAUDE.md
+PROGRESS.md
+archive/
+
+# Claude Code local settings
+.claude/
