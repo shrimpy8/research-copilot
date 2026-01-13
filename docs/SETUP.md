@@ -215,23 +215,23 @@ Create `.env` in project root:
 # ===== Ollama Configuration =====
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_DEFAULT_MODEL=ministral-3:8b
-OLLAMA_TIMEOUT_MS=60000
+OLLAMA_TIMEOUT_MS=120000            # 2 minutes for complex research queries
+OLLAMA_TEMPERATURE=0.4              # LLM creativity (0.0-1.0, lower = more focused)
 
 # ===== MCP Server Configuration =====
 MCP_SERVER_URL=http://localhost:3001
 MCP_SERVER_TIMEOUT_MS=30000
 
-# ===== Search Configuration =====
-# Options: duckduckgo (free), serper (better, requires API key)
-SEARCH_PROVIDER=duckduckgo
-# SERPER_API_KEY=your_api_key_here
+# ===== Search/Fetch Timeouts =====
+SEARCH_TIMEOUT_MS=30000             # 30 seconds for search requests
+FETCH_TIMEOUT_MS=30000              # 30 seconds for page fetches
 
 # ===== Logging =====
-LOG_LEVEL=info          # debug, info, warn, error
-LOG_FORMAT=pretty       # pretty, json
+LOG_LEVEL=info                      # debug, info, warn, error
+LOG_FORMAT=pretty                   # pretty, json
 
 # ===== Development =====
-APP_ENV=development     # development, production, test
+APP_ENV=development                 # development, production, test
 ```
 
 ### MCP Server Configuration
@@ -239,23 +239,25 @@ APP_ENV=development     # development, production, test
 Create `.env` in `mcp_server/` directory:
 
 ```env
+# ===== Server =====
 PORT=3001
 HOST=localhost
 LOG_LEVEL=info
 
-# Search
-SEARCH_PROVIDER=duckduckgo
+# ===== Search =====
+SEARCH_PROVIDER=duckduckgo          # duckduckgo (free) or serper (requires API key)
+SERPER_API_KEY=                     # Required if SEARCH_PROVIDER=serper
 MAX_SEARCH_RESULTS=5
-SEARCH_TIMEOUT_MS=10000
+SEARCH_TIMEOUT_MS=30000             # 30 seconds for search requests
 
-# Fetch
-MAX_PAGE_SIZE=50000
-FETCH_TIMEOUT_MS=15000
+# ===== Fetch =====
+MAX_PAGE_SIZE=50000                 # Maximum characters to extract from a page
+FETCH_TIMEOUT_MS=30000              # 30 seconds for page fetches
 
-# Database
+# ===== Database =====
 DB_PATH=./data/notes.db
 
-# Rate Limits (per minute)
+# ===== Rate Limits (per minute) =====
 RATE_LIMIT_SEARCH=10
 RATE_LIMIT_FETCH=30
 RATE_LIMIT_NOTES=50
@@ -535,4 +537,4 @@ OLLAMA_DEFAULT_MODEL=ministral-3:8b
 
 ---
 
-*Last updated: January 11, 2026*
+*Last updated: January 12, 2026*

@@ -168,6 +168,31 @@ The LLM combines information from multiple sources:
 
 ---
 
+## UI Settings
+
+The sidebar provides configurable options that affect LLM behavior and research quality:
+
+| Setting | Range | Default | Description |
+|---------|-------|---------|-------------|
+| **Model** | Installed models | `ministral-3:8b` | Ollama model to use for inference |
+| **Research Mode** | Quick / Deep | Quick | Controls search and fetch limits |
+| **Fetch Format** | text / markdown | text | Output format for fetched pages |
+| **Temperature** | 0.0 - 1.0 | 0.4 | LLM creativity/randomness |
+
+### Temperature Control
+
+Temperature affects how the LLM generates responses:
+
+- **Lower (0.0 - 0.3)**: More focused, deterministic, consistent answers. Best for factual research where you want reliable, repeatable results.
+- **Medium (0.4 - 0.6)**: Balanced creativity and focus. Default of 0.4 provides good research quality while allowing some variation.
+- **Higher (0.7 - 1.0)**: More creative, varied responses. May be useful for brainstorming or exploring different perspectives, but less reliable for factual research.
+
+Temperature can be set via:
+1. **UI slider** in the sidebar (persists for session)
+2. **Environment variable** `OLLAMA_TEMPERATURE` in `.env` (sets default)
+
+---
+
 ## MCP Tools Reference
 
 ### `web_search`
@@ -214,8 +239,10 @@ Each component has a single responsibility:
 ### Extensibility
 Adding new tools is simple:
 1. Implement tool in MCP server
-2. Add to tool definitions in prompts
+2. Add to tool definitions in `prompts/system_prompt.md`
 3. The LLM automatically learns to use it
+
+Note: System prompts are externalized in the `prompts/` directory for easy editing without code changes.
 
 ### Privacy
 - No data sent to cloud AI services

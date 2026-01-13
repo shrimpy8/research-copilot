@@ -68,6 +68,7 @@ def run_research(query: str, status_placeholder=None) -> Optional[ResearchRespon
     orchestrator.set_research_mode(state.research_mode)
     orchestrator.set_fetch_extract_mode(state.fetch_extract_mode)
     orchestrator.set_model(state.model)
+    orchestrator.set_temperature(state.temperature)
 
     set_researching(True)
     set_error(None)
@@ -208,6 +209,17 @@ def render_sidebar():
         help="Choose text or markdown formatting for fetched pages.",
     )
     state.fetch_extract_mode = extract_mode
+
+    # Temperature slider
+    temperature = st.slider(
+        "Temperature",
+        min_value=0.0,
+        max_value=1.0,
+        value=state.temperature,
+        step=0.1,
+        help="LLM creativity (0.0 = focused/deterministic, 1.0 = creative/varied). Default: 0.4",
+    )
+    state.temperature = temperature
 
     st.divider()
 

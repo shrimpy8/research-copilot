@@ -47,6 +47,7 @@ class AppState:
     current_sources: List[Dict[str, str]] = field(default_factory=list)
     research_mode: str = "quick"
     model: str = "ministral-3:8b"
+    temperature: float = 0.4  # LLM temperature (0.0-1.0, lower = more focused)
     is_researching: bool = False
     error: Optional[str] = None
     notes_search_query: str = ""
@@ -252,13 +253,15 @@ def get_latest_tool_traces(max_queries: int = 1) -> List[Dict[str, Any]]:
         max_queries: Maximum number of queries to return traces for (default: 1)
 
     Returns:
-        List of dicts with 'query' and 'traces' keys, most recent first
+        List of dicts with 'query' and 'traces' keys, most recent first.
+        Includes queries without tool calls (traces will be empty list).
     """
     messages = st.session_state.get("messages", [])
 
     results = []
     for msg in reversed(messages):
-        if msg.get("role") == "assistant" and msg.get("tool_traces"):
+        # Include ALL assistant messages with a query, not just ones with tool_traces
+        if msg.get("role") == "assistant" and msg.get("query"):
             results.append({
                 "query": msg.get("query", "Unknown query"),
                 "traces": msg.get("tool_traces", [])

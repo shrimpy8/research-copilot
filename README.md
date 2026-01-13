@@ -14,6 +14,37 @@ A local AI research assistant that searches, reads, summarizes, and remembers—
 - **Multi-Query Research Trail**: View MCP tool calls grouped by query with timing and success metrics
 - **How It Works Tab**: In-app documentation explaining the architecture and key concepts
 
+## Screenshots
+
+| Screenshot | Description |
+|------------|-------------|
+| [Research Results](#research-with-citations) | Web search with inline citations and source attribution |
+| [MCP Tool Calls](#transparent-tool-calls) | Research Trail showing JSON-RPC tool execution |
+| [Save Notes](#save-research-notes) | Save findings with tags and source URLs |
+| [Deep Dive Mode](screenshots/research_deep_dive.png) | Extended research with more sources |
+| [Fetch Page Details](screenshots/mcp_fetch_page.png) | MCP fetch_page tool execution trace |
+| [Sidebar Settings](screenshots/sidebar_settings.png) | Model, temperature, and mode configuration |
+| [URL Summarization](screenshots/summarize_url.png) | Summarize any blog or article URL |
+| [How It Works](screenshots/how_it_works.png) | In-app architecture documentation |
+
+### Research with Citations
+
+Search the web and get answers with numbered inline citations linking to sources.
+
+![Research Results](screenshots/research_quick_summary.png)
+
+### Transparent Tool Calls
+
+See exactly what the AI is doing with the Research Trail panel showing MCP tool executions.
+
+![MCP Tool Calls](screenshots/mcp_web_search.png)
+
+### Save Research Notes
+
+Save valuable findings as notes with tags and source URLs for future reference.
+
+![Save Notes](screenshots/save_note.png)
+
 ## Architecture
 
 ```
@@ -111,11 +142,13 @@ Open http://localhost:8501 in your browser.
 ```
 research-copilot/
 ├── app.py                    # Streamlit entry point
+├── prompts/                  # Externalized prompt templates
+│   └── system_prompt.md      # Main system prompt (editable)
 ├── src/
 │   ├── agent/                # LLM orchestration
 │   │   ├── orchestrator.py   # Tool-calling loop
 │   │   ├── parser.py         # Tool call extraction
-│   │   ├── prompts.py        # System prompt builder
+│   │   ├── prompts.py        # Prompt loader (reads from prompts/)
 │   │   └── citations.py      # Citation formatting
 │   ├── clients/              # External service clients
 │   │   ├── ollama_client.py  # Ollama API client
@@ -175,28 +208,40 @@ cp mcp_server/.env.example mcp_server/.env
 # Ollama
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_DEFAULT_MODEL=ministral-3:8b
+OLLAMA_TIMEOUT_MS=120000       # 2 minutes for complex queries
+OLLAMA_TEMPERATURE=0.4         # 0.0-1.0 (lower = more focused)
 
 # MCP Server
 MCP_SERVER_URL=http://localhost:3001
 
+# Search/Fetch Timeouts
+SEARCH_TIMEOUT_MS=30000        # 30 seconds
+FETCH_TIMEOUT_MS=30000         # 30 seconds
+
 # Logging
-LOG_LEVEL=INFO
+LOG_LEVEL=info
 LOG_FORMAT=pretty  # or "json"
 ```
 
-### MCP Server `.env` (Required for Serper API)
+### MCP Server `.env`
 
 Create a `.env` file in `mcp_server/`:
 
 ```env
 # Search Provider (duckduckgo or serper)
 SEARCH_PROVIDER=serper
+SERPER_API_KEY=your_key_here   # Required if SEARCH_PROVIDER=serper
 
-# Serper API Key (required if SEARCH_PROVIDER=serper)
-SERPER_API_KEY=your_key_here
+# Timeouts
+SEARCH_TIMEOUT_MS=30000        # 30 seconds
+FETCH_TIMEOUT_MS=30000         # 30 seconds
+
+# Rate Limiting (requests per minute)
+RATE_LIMIT_SEARCH=10
+RATE_LIMIT_FETCH=30
 ```
 
-**Note:** The MCP server reads its own `.env` file for search configuration. DuckDuckGo is the default (no API key required) but may have rate limits. Serper provides more reliable results. See `mcp_server/.env.example` for all available options including rate limiting and timeouts.
+**Note:** DuckDuckGo is the default (no API key required) but may have rate limits. Serper provides more reliable results. See `.env.example` files for all available options.
 
 ## Research Modes
 
@@ -205,11 +250,23 @@ SERPER_API_KEY=your_key_here
 | **Quick Summary** | 5 max | 3 pages | Concise bullet points, < 250 words |
 | **Deep Dive** | 7 max | 5 pages | Detailed analysis with recommendations |
 
+## UI Settings
+
+The sidebar provides several configurable options:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Model** | `ministral-3:8b` | Ollama model (shows installed models from preferred list) |
+| **Research Mode** | Quick Summary | Quick (3 sources) or Deep Dive (5 sources) |
+| **Fetch Format** | text | Output format for fetched pages (text or markdown) |
+| **Temperature** | 0.4 | LLM creativity (0.0 = focused, 1.0 = creative) |
+
 **Notes:**
 - Notes list pagination uses `limit` + `offset` in MCP, and the UI shows snippets for each note
 - Model selection shows 4 preferred models: `ministral-3:8b` (default), `llama3.1:8b`, `mistral:7b`, `gemma3:4b`
 - Research Trail displays tool calls for the last 3 queries with per-query and aggregate statistics
 - Sidebar shows active search provider (🔍 Serper API or 🦆 DuckDuckGo)
+- Temperature can also be set via `OLLAMA_TEMPERATURE` environment variable
 
 ## MCP Tools
 

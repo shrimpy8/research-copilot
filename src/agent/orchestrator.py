@@ -89,6 +89,7 @@ class Orchestrator:
         model: Optional[str] = None,
         research_mode: str = "quick",
         fetch_extract_mode: str = "text",
+        temperature: Optional[float] = None,
     ):
         """
         Initialize the orchestrator.
@@ -98,12 +99,14 @@ class Orchestrator:
             mcp_client: MCP client instance (creates one if not provided)
             model: LLM model to use (defaults to config setting)
             research_mode: "quick" or "deep" - controls search/fetch limits
+            temperature: LLM temperature (0.0-1.0, defaults to config setting)
         """
         self.ollama = ollama_client or OllamaClient()
         self.mcp = mcp_client or MCPClient()
         self.model = model or settings.ollama_default_model
         self.research_mode = research_mode if research_mode in RESEARCH_MODES else "quick"
         self.fetch_extract_mode = fetch_extract_mode if fetch_extract_mode in ["text", "markdown"] else "text"
+        self.temperature = temperature if temperature is not None else settings.ollama_temperature
         self.conversation_history: List[Message] = []
         self._request_id: str = ""
 
@@ -123,6 +126,12 @@ class Orchestrator:
         """Set the LLM model for the orchestrator."""
         if model:
             self.model = model
+
+    def set_temperature(self, temperature: float) -> None:
+        """Set the LLM temperature (0.0-1.0, lower = more focused)."""
+        if 0.0 <= temperature <= 1.0:
+            self.temperature = temperature
+            logger.info(f"Temperature set to: {temperature}")
 
     async def research(
         self,
@@ -184,8 +193,20 @@ class Orchestrator:
                 logger.error(f"LLM error: {e}")
                 raise
 
+            # Debug: Log first 500 chars of LLM response to diagnose tool call issues
+            logger.debug(
+                f"LLM response preview (iteration {iterations}): {llm_response[:500]}...",
+                extra={"request_id": self._request_id}
+            )
+
             # Parse for tool calls
             parse_result = parse_tool_calls(llm_response)
+
+            # Debug: Log parse result
+            logger.info(
+                f"Parsed {len(parse_result.tool_calls)} tool calls from response",
+                extra={"request_id": self._request_id, "has_incomplete": parse_result.has_incomplete}
+            )
 
             # If no tool calls, we're done
             if not parse_result.tool_calls:
@@ -331,11 +352,12 @@ class Orchestrator:
         while iterations < self.MAX_TOOL_ITERATIONS:
             iterations += 1
 
-            # Stream LLM response
+            # Stream LLM response with temperature
             current_response = ""
             async for chunk in self.ollama.chat_stream(
                 messages=messages,
-                model=self.model
+                model=self.model,
+                options={"temperature": self.temperature}
             ):
                 current_response += chunk
 
@@ -400,12 +422,16 @@ class Orchestrator:
         on_chunk: Optional[Callable[[str], None]] = None
     ) -> str:
         """Get a complete response from the LLM."""
+        # Build options with temperature
+        options = {"temperature": self.temperature}
+
         if on_chunk:
             # Use streaming
             full_response = ""
             async for chunk in self.ollama.chat_stream(
                 messages=messages,
-                model=self.model
+                model=self.model,
+                options=options
             ):
                 full_response += chunk
                 on_chunk(chunk)
@@ -415,7 +441,8 @@ class Orchestrator:
             response = await self.ollama.chat(
                 messages=messages,
                 model=self.model,
-                stream=False
+                stream=False,
+                options=options
             )
             return response.message.content
 

@@ -39,8 +39,9 @@ class Settings(BaseSettings):
     # Ollama
     ollama_base_url: str = "http://localhost:11434"
     ollama_default_model: str = "ministral-3:8b"
-    ollama_timeout_ms: int = 60000
+    ollama_timeout_ms: int = 120000  # Increased from 60s to 120s for complex research queries
     ollama_max_retries: int = 3
+    ollama_temperature: float = 0.4  # LLM temperature (0.0-1.0, lower = more focused)
 
     # MCP Server
     mcp_server_url: str = "http://localhost:3001"
@@ -50,11 +51,11 @@ class Settings(BaseSettings):
     search_provider: Literal["duckduckgo", "serper"] = "duckduckgo"
     search_api_key: Optional[str] = None
     search_max_results: int = 5
-    search_timeout_ms: int = 10000
+    search_timeout_ms: int = 30000  # 30 seconds for search requests
 
     # Fetch
     fetch_max_page_size: int = 50000
-    fetch_timeout_ms: int = 15000
+    fetch_timeout_ms: int = 30000  # 30 seconds for page fetches
     fetch_user_agent: str = "ResearchCopilot/1.0"
 
     # Notes

@@ -692,6 +692,13 @@ def render_research_trail(
 
             st.caption(f"📊 {q_calls} calls | ✅ {q_success} success | ⏱️ {q_duration:.0f}ms")
 
+            # Handle queries with no tool calls
+            if not traces:
+                st.caption("💬 _Answered from context/knowledge (no MCP tools used)_")
+                if group_idx < len(query_groups) - 1:
+                    st.markdown("---")
+                continue
+
             # Tool call timeline for this query
             for i, trace in enumerate(traces):
                 tool_name = trace.get("tool_name", "unknown")

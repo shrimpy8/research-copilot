@@ -99,7 +99,8 @@ function createPinnedDispatcher(record: { address: string; family: number }): Ag
   return new Agent({
     connect: {
       lookup: (_hostname, _options, callback) => {
-        callback(null, record.address, record.family);
+        // Node.js 22+ expects callback with array of {address, family} objects
+        callback(null, [{ address: record.address, family: record.family }]);
       },
     },
   });
@@ -317,7 +318,8 @@ export async function fetchPage(
           'Accept-Language': 'en-US,en;q=0.5',
         },
         redirect: 'manual',
-        dispatcher,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dispatcher: dispatcher as any,
       });
 
       // Handle redirects manually so we can validate each hop

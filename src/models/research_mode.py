@@ -2,10 +2,27 @@
 Research mode configuration for Research Copilot.
 
 Single source of truth for research mode definitions per PRD §4.5.2.
+Prompts are externalized in prompts/ directory for easy editing.
 """
 
 from dataclasses import dataclass
 from typing import Dict
+from pathlib import Path
+from functools import lru_cache
+
+# Base path for prompt files
+PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+
+
+@lru_cache(maxsize=10)
+def _load_prompt_file(filename: str) -> str:
+    """Load a prompt file from the prompts directory. Cached for performance."""
+    filepath = PROMPTS_DIR / filename
+    if filepath.exists():
+        return filepath.read_text(encoding="utf-8").strip()
+    else:
+        # Fallback to empty string if file doesn't exist
+        return ""
 
 
 @dataclass(frozen=True)
@@ -16,7 +33,12 @@ class ResearchModeConfig:
     search_limit: int  # Max search results
     fetch_limit: int  # Max pages to fetch
     description: str  # Short description
-    prompt_context: str  # Instructions for LLM
+    prompt_file: str  # Filename for prompt in prompts/ directory
+
+    @property
+    def prompt_context(self) -> str:
+        """Load prompt context from external file."""
+        return _load_prompt_file(self.prompt_file)
 
 
 # Define all research modes in one place
@@ -27,13 +49,7 @@ QUICK_MODE = ResearchModeConfig(
     search_limit=5,
     fetch_limit=3,
     description="Quick summary with up to 5 sources, bullet points, < 250 words",
-    prompt_context="""## Research Mode: Quick Summary
-- Search for up to 5 sources
-- You MUST fetch and read at least 3 relevant pages before answering
-- Provide a concise summary with bullet points
-- Keep response under 250 words
-- Focus on key facts and main takeaways
-- Cite ALL sources you read with numbered citations [1], [2], [3]"""
+    prompt_file="quick_mode.md"
 )
 
 DEEP_MODE = ResearchModeConfig(
@@ -42,13 +58,7 @@ DEEP_MODE = ResearchModeConfig(
     search_limit=7,
     fetch_limit=5,
     description="Deep dive with up to 7 sources, detailed analysis, action items",
-    prompt_context="""## Research Mode: Deep Dive
-- Search for up to 7 sources
-- You MUST fetch and read at least 5 relevant pages before answering
-- Provide detailed analysis with supporting evidence from multiple sources
-- Include actionable insights and recommendations
-- Compare perspectives from different sources
-- Cite ALL sources you read with numbered citations [1], [2], [3], etc."""
+    prompt_file="deep_mode.md"
 )
 
 # Lookup dictionaries
