@@ -64,15 +64,15 @@ function loadConfig(): Config {
 
   const result = ConfigSchema.safeParse(rawConfig);
 
+  // Pre-logger bootstrap: logger not yet initialized when config loads (circular dependency)
   if (!result.success) {
-    console.error('Configuration validation failed:');
-    console.error(result.error.format());
+    console.error('Configuration validation failed:', result.error.format());
     process.exit(1);
   }
 
   // Validate serper API key if using serper provider
   if (result.data.searchProvider === 'serper' && !result.data.serperApiKey) {
-    console.error('SERPER_API_KEY is required when using serper provider');
+    console.error('SERPER_API_KEY is required when SEARCH_PROVIDER=serper');
     process.exit(1);
   }
 

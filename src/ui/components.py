@@ -36,7 +36,7 @@ def render_tags(tags: List[str], max_tags: int = 3) -> str:
     if not tags:
         return ""
     return " ".join([
-        f'<span style="{tag_style()}">{tag}</span>'
+        f'<span style="{tag_style()}">{_html.escape(tag)}</span>'
         for tag in tags[:max_tags]
     ])
 
@@ -255,12 +255,12 @@ def render_source_comparison(sources: List[Dict[str, str]]) -> None:
                     f"""
                     <div class="compare-source">
                         <div class="compare-title">
-                            [{i+1}] {title}...
+                            [{i+1}] {_html.escape(title)}...
                             <span class="compare-type" style="background: {badge['color']}20; color: {badge['color']};">
-                                {badge['label']}
+                                {_html.escape(badge['label'])}
                             </span>
                         </div>
-                        <div class="compare-snippet">{snippet}...</div>
+                        <div class="compare-snippet">{_html.escape(snippet)}...</div>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -327,12 +327,12 @@ def render_error_message(
             margin: 12px 0;
         ">
             <div style="color: #DC3545; font-weight: 600; margin-bottom: 8px;">
-                ❌ {title}
+                ❌ {_html.escape(title)}
             </div>
             <div style="color: #1A1A1A; margin-bottom: 8px;">
-                {message}
+                {_html.escape(message)}
             </div>
-            {f'<div style="color: #6C757D; font-size: 12px;">Error code: <code>{error_code}</code></div>' if error_code else ''}
+            {f'<div style="color: #6C757D; font-size: 12px;">Error code: <code>{_html.escape(error_code)}</code></div>' if error_code else ''}
         </div>
         """,
         unsafe_allow_html=True
@@ -568,59 +568,6 @@ def render_followup_chips(
                 selected = suggestion
 
     return selected
-
-
-def generate_followup_suggestions(
-    query: str,
-    response_content: str,
-    sources: List[Dict[str, str]] = None
-) -> List[str]:
-    """
-    Generate follow-up question suggestions based on query and response.
-
-    DEPRECATED: This rule-based function is superseded by LLM-generated follow-ups
-    in src/agent/orchestrator.py:_generate_followup_questions().
-    Use ResearchResponse.followup_questions instead.
-
-    Kept for backward compatibility only.
-
-    Args:
-        query: Original user query
-        response_content: The research response content (unused in rule-based)
-        sources: List of sources used
-
-    Returns:
-        List of 3 suggested follow-up questions
-    """
-    suggestions = []
-
-    # Extract key topic from query
-    query_lower = query.lower()
-
-    # Pattern-based suggestions
-    if "what is" in query_lower or "what are" in query_lower:
-        topic = query.replace("what is", "").replace("what are", "").strip("? ")
-        suggestions.append(f"How does {topic} work in practice?")
-        suggestions.append(f"What are the pros and cons of {topic}?")
-        suggestions.append(f"Compare {topic} with alternatives")
-    elif "how to" in query_lower or "how do" in query_lower:
-        suggestions.append("What are common mistakes to avoid?")
-        suggestions.append("Are there any best practices?")
-        suggestions.append("What tools or resources can help?")
-    elif "why" in query_lower:
-        suggestions.append("What are the implications?")
-        suggestions.append("How has this changed over time?")
-        suggestions.append("What do experts say about this?")
-    else:
-        # Generic follow-ups based on having sources
-        if sources and len(sources) > 1:
-            suggestions.append("Can you compare these sources?")
-        suggestions.append("What are the key takeaways?")
-        suggestions.append("Are there any recent developments?")
-        suggestions.append("What should I know next?")
-
-    # Ensure we have exactly 3 unique suggestions
-    return list(dict.fromkeys(suggestions))[:3]
 
 
 def render_research_trail(

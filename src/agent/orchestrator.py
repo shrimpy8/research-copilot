@@ -77,6 +77,7 @@ class Orchestrator:
 
     MAX_TOOL_ITERATIONS = 5  # Reduced from 10 to fail faster on bad models
     TOOL_TIMEOUT_MS = 30000  # 30 seconds per tool call
+    MAX_HISTORY = 20  # Max conversation history messages to retain
 
     # Valid MCP tools - reject unknown tools immediately to prevent LLM hallucinations
     VALID_TOOLS = {"web_search", "fetch_page", "save_note", "list_notes", "get_note"}
@@ -278,12 +279,11 @@ class Orchestrator:
         # Calculate total duration
         total_duration = (datetime.now() - start_time).total_seconds() * 1000
 
-        # Update conversation history (keep last 20 messages to avoid unbounded growth)
-        MAX_HISTORY = 20
+        # Update conversation history (keep last N messages to avoid unbounded growth)
         self.conversation_history.append(Message(role="user", content=query))
         self.conversation_history.append(Message(role="assistant", content=final_response))
-        if len(self.conversation_history) > MAX_HISTORY:
-            self.conversation_history = self.conversation_history[-MAX_HISTORY:]
+        if len(self.conversation_history) > self.MAX_HISTORY:
+            self.conversation_history = self.conversation_history[-self.MAX_HISTORY:]
 
         logger.info(
             "Research complete",
@@ -416,11 +416,10 @@ class Orchestrator:
                 "content": "Tool results:\n\n" + "\n\n".join(tool_results)
             })
 
-        MAX_HISTORY = 20
         self.conversation_history.append(Message(role="user", content=query))
         self.conversation_history.append(Message(role="assistant", content=accumulated_response))
-        if len(self.conversation_history) > MAX_HISTORY:
-            self.conversation_history = self.conversation_history[-MAX_HISTORY:]
+        if len(self.conversation_history) > self.MAX_HISTORY:
+            self.conversation_history = self.conversation_history[-self.MAX_HISTORY:]
 
     async def _get_llm_response(
         self,
@@ -705,7 +704,7 @@ Can you show a practical example?"""
                     return questions[:3]
 
         except Exception:
-            logger.warning("Failed to generate follow-up questions")
+            logger.exception("Failed to generate follow-up questions")
 
         # Fallback to basic questions if LLM fails
         return self._fallback_followup_questions(query)

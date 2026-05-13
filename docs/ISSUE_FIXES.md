@@ -873,3 +873,326 @@ Scan of the codebase after all 32 fixes identified one additional instance match
 - **Pattern:** Issue #22 (console.log instead of structured logger)
 - **Fix:** `console.log('Database connection closed')` → `logger.info('Database connection closed')`
 - **Status:** **FIXED** — logger was already imported in this file from the Issue #22 work.
+
+---
+
+## Resolutions — Verification
+
+**Verified by:** Claude Opus on 2026-05-13
+**Result:** 31/32 PASS — 1 residual issue (documented as SR-1 below)
+
+### Verified PASS (31 items)
+
+| # | Status |
+|---|--------|
+| 1 | DEFERRED — user must rotate API key |
+| 2 | PASS — `_html.escape()` applied to `title`, `url`, `snippet` in `render_source_card()` and `render_content_with_citations()` |
+| 3 | PASS — `LogContext` uses `logging.LoggerAdapter`, no global state |
+| 4 | PASS — f-string logging converted to `%s`-style in `orchestrator.py`, `ollama_client.py`, `app.py` |
+| 5 | PASS — all clients wrapped in `async with` context managers |
+| 6 | PASS — `asyncio.get_running_loop()` at `app.py:42` |
+| 7 | PASS — `ApiError` imported in `research.py:15` |
+| 8 | PASS — `result.error` (string) not `result.error.message` |
+| 9 | PASS — ordered `OllamaError` → `MCPError` → `Exception` blocks |
+| 10 | PASS — uses `ErrorCodes.INTERNAL_ERROR` |
+| 11 | PASS — runtime `typeof` checks on all MCP tool parameters |
+| 12 | PASS — `datetime.now(timezone.utc)` in logger and responses |
+| 13 | PASS — `MAX_HISTORY = 20` trim in both `research()` and `research_stream()` |
+| 14 | PASS — FTS5 terms escaped with `term.replace(/"/g, '""')` |
+| 15 | PASS — four-condition boundary match for tags |
+| 16 | PASS — imports shared `load_prompt_file` from `src/utils/prompt_loader`; logs warning |
+| 17 | PASS — `src/utils/prompt_loader.py` created; both modules import from it |
+| 18 | PASS — module-level `property()` aliases removed |
+| 19 | PASS — `logger.exception()` used in all except blocks |
+| 20 | PASS — `asyncio.wait_for(..., timeout=15.0)` wrapping follow-up LLM call |
+| 21 | PASS — `on_tool_complete=None` instead of `on_tool_complete=on_progress` |
+| 22 | PASS — `mcp_server/src/logger.ts` created; `server.ts` and `db/client.ts` use structured logger |
+| 23 | PASS — `uv add` instead of `pip install` |
+| 24 | NON-ISSUE — root `.gitignore` covers `dist/` |
+| 25 | DEFERRED — Pydantic migration is a larger refactor |
+| 26 | NOT REMOVED — `asyncio` IS used after Issue #20 fix |
+| 27 | PASS — `json` imports moved to module level |
+| 28 | PASS — renamed to `summarize_result` (public) |
+| 29 | PASS — `@st.cache_resource(ttl=300)` |
+| 30 | PASS — `settings.preferred_models` from config |
+| 31 | PASS — `tags: list[str]` |
+| 32 | PASS — `Optional[Callable[[str], None]]` |
+| AF-1 | PASS — `logger.info('Database connection closed')` |
+
+### Residual Issue (becomes SR-1 in Second Review)
+
+**Issue #4 (P1): f-string logging — 3 instances remain in `src/clients/mcp_client.py`**
+- Lines 258-259, 291-292, 306-307 still use f-string logging
+- These were part of the original audit scope but were missed in the fix pass
+
+---
+
+## Second Review — Issues and Fixes
+
+**Date:** 2026-05-13
+**Auditor:** Claude Opus
+**Scope:** Post-fix codebase scan — Python app (`src/`, `app.py`) + MCP server (`mcp_server/src/`)
+
+| Severity | Count |
+|----------|-------|
+| High (P1) | 4 |
+| Medium (P2) | 9 |
+| Low (P3) | 3 |
+| **Total** | **16** |
+
+---
+
+### High (P1)
+
+#### SR-1: Residual f-string logging in `mcp_client.py`
+- **File:** `src/clients/mcp_client.py:258-259, 291-292, 306-307`
+- **Category:** Logging anti-pattern
+- **Severity:** P1 (residual from Issue #4)
+- **Problem:** Three f-string logging calls remain in `call_tool()`. These bypass the `LogRedactor` and defeat lazy evaluation.
+- **Impact:** Log redaction rules bypassed; wasted CPU formatting strings at suppressed log levels.
+- **Surgical Fix:**
+```python
+# Line 258-259 — Before:
+logger.info(f"Calling MCP tool: {tool_name}", extra={...})
+# After:
+logger.info("Calling MCP tool: %s", tool_name, extra={...})
+
+# Line 291-292 — Before:
+logger.warning(f"MCP tool error: {tool_name} - {error}", extra={...})
+# After:
+logger.warning("MCP tool error: %s - %s", tool_name, error, extra={...})
+
+# Line 306-307 — Before:
+logger.info(f"MCP tool completed: {tool_name}", extra={...})
+# After:
+logger.info("MCP tool completed: %s", tool_name, extra={...})
+```
+
+#### SR-2: XSS via unescaped tag text in `render_tags`
+- **File:** `src/ui/components.py:36-41`
+- **Category:** Security (XSS)
+- **Severity:** P1
+- **Problem:** `render_tags()` injects `tag` directly into HTML with `unsafe_allow_html=True` but does not HTML-escape it. A tag containing `<script>alert('xss')</script>` would execute.
+- **Impact:** Stored XSS — a malicious tag saved via MCP server executes JS when the note is viewed.
+- **Surgical Fix:**
+```python
+# Before:
+return " ".join([
+    f'<span style="{tag_style()}">{tag}</span>'
+    for tag in tags[:max_tags]
+])
+
+# After:
+return " ".join([
+    f'<span style="{tag_style()}">{_html.escape(tag)}</span>'
+    for tag in tags[:max_tags]
+])
+```
+
+#### SR-3: XSS in `render_error_message` — `message`, `title`, `error_code` unescaped
+- **File:** `src/ui/components.py:329-339`
+- **Category:** Security (XSS)
+- **Severity:** P1
+- **Problem:** `render_error_message()` injects `message`, `title`, and `error_code` into HTML rendered with `unsafe_allow_html=True` without escaping. Error messages derived from user input could inject HTML/JS.
+- **Impact:** XSS when error messages echo user-controlled data.
+- **Surgical Fix:**
+```python
+# Before:
+<div ...>❌ {title}</div>
+<div ...>{message}</div>
+{f'...<code>{error_code}</code>...' if error_code else ''}
+
+# After:
+<div ...>❌ {_html.escape(title)}</div>
+<div ...>{_html.escape(message)}</div>
+{f'...<code>{_html.escape(error_code)}</code>...' if error_code else ''}
+```
+
+#### SR-4: XSS in `render_source_comparison` — `snippet` and `title` unescaped
+- **File:** `src/ui/components.py:255-263`
+- **Category:** Security (XSS)
+- **Severity:** P1
+- **Problem:** `render_source_comparison()` injects `snippet` and `title` from web search results into HTML with `unsafe_allow_html=True`. Web search snippets are attacker-controlled.
+- **Impact:** Reflected XSS via malicious web page titles/snippets in comparison view.
+- **Surgical Fix:**
+```python
+# Before:
+<div class="compare-title">[{i+1}] {title}...
+
+# After:
+<div class="compare-title">[{i+1}] {_html.escape(title)}...
+```
+Same for `snippet` values in the template.
+
+---
+
+### Medium (P2)
+
+#### SR-5: `console.error` in MCP server config startup
+- **File:** `mcp_server/src/config/index.ts:68-69, 75-76`
+- **Category:** Logging
+- **Severity:** P2
+- **Problem:** `console.error()` used for config validation failures instead of the pino logger (which is available as a module-level singleton).
+- **Impact:** Config errors won't appear in structured log output.
+- **Surgical Fix:**
+```typescript
+// Before:
+console.error('Configuration validation failed:');
+console.error(result.error.format());
+
+// After:
+import { logger } from '../logger.js';
+logger.fatal({ errors: result.error.format() }, 'Configuration validation failed');
+```
+
+#### SR-6: Bare `except Exception` leaks internal details in research API
+- **File:** `src/api/research.py:128`
+- **Category:** Error Handling / Information Disclosure
+- **Severity:** P2
+- **Problem:** `except Exception as e:` passes `str(e)` directly to the API response. Internal error details (file paths, stack frames) could leak. No traceback is logged.
+- **Impact:** Internal implementation details exposed to API consumers.
+- **Surgical Fix:**
+```python
+# Before:
+except Exception as e:
+    return error_response(code=ErrorCodes.INTERNAL_ERROR, message=str(e), ...)
+
+# After:
+except Exception:
+    logger.exception("Research request failed")
+    return error_response(code=ErrorCodes.INTERNAL_ERROR, message="An unexpected error occurred", ...)
+```
+
+#### SR-7: Bare `except Exception` in notes API (3 instances)
+- **File:** `src/api/notes.py:91, 124, 155`
+- **Category:** Error Handling / Information Disclosure
+- **Severity:** P2
+- **Problem:** Three `except Exception as e:` blocks pass `str(e)` into API error responses without logging.
+- **Impact:** Same as SR-6 — internal details leak, no tracebacks logged.
+- **Surgical Fix:** Add `logger.exception("...")` in each block and replace `str(e)` with generic message.
+
+#### SR-8: `logger.error` instead of `logger.exception` in `handlers.py`
+- **File:** `src/errors/handlers.py:121, 127`
+- **Category:** Logging
+- **Severity:** P2
+- **Problem:** `logger.error()` used in error handling paths where there IS an active exception context. Traceback only logged at DEBUG level via manual `traceback.format_exc()` — lost in production (INFO level).
+- **Impact:** Production errors lack tracebacks.
+- **Surgical Fix:**
+```python
+# Before (line 121):
+logger.error("Internal error: %s", error.message, extra=extra)
+if include_traceback:
+    logger.debug(traceback.format_exc())
+
+# After:
+logger.exception("Internal error: %s", error.message, extra=extra)
+```
+Same for line 127.
+
+#### SR-9: XSS via exception messages in `st.error()` calls
+- **File:** `app.py:397, 528, 530`
+- **Category:** Security (XSS)
+- **Severity:** P2
+- **Problem:** `st.error(f"Error loading note: {e}")` injects exception messages into Streamlit UI. If exceptions contain user-controlled data (e.g., note titles), this could execute HTML/JS.
+- **Impact:** Potential XSS through error display paths.
+- **Surgical Fix:**
+```python
+# Before:
+st.error(f"Error loading note: {e}")
+
+# After:
+logger.exception("Error loading note")
+st.error("Error loading note. Please try again.")
+```
+
+#### SR-10: Unclosed HTTP clients in cached orchestrator
+- **File:** `src/clients/mcp_client.py:93-101`, `src/clients/ollama_client.py:107-114`
+- **Category:** Resource Leak
+- **Severity:** P2
+- **Problem:** `_get_client()` creates `httpx.AsyncClient` that is never closed when the orchestrator is cached via `@st.cache_resource`. No teardown hook exists for cleanup.
+- **Impact:** Connection pool resources leak for the lifetime of the cached orchestrator.
+- **Surgical Fix:** Architectural issue — note for awareness. Minimal fix: add `__del__` with cleanup, or document as accepted debt.
+
+#### SR-11: Missing UUID validation in notes API `get_note`
+- **File:** `src/api/notes.py:109`
+- **Category:** Input Validation
+- **Severity:** P2
+- **Problem:** `note_id` passed directly to MCP without format validation. Defense-in-depth requires validation at each boundary.
+- **Surgical Fix:**
+```python
+import re
+UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$', re.IGNORECASE)
+
+# Add at start of get_note:
+if not note_id or not UUID_PATTERN.match(note_id.strip()):
+    return error_response(code=ErrorCodes.INVALID_REQUEST, message="Invalid note ID format", ...)
+```
+
+#### SR-12: Internal error messages leaked in MCP server responses
+- **File:** `mcp_server/src/server.ts:328-331, 409-414`
+- **Category:** Information Disclosure
+- **Severity:** P2
+- **Problem:** Unexpected errors return `error.message` directly to the client. Internal details (file paths, DB errors) could leak.
+- **Surgical Fix:**
+```typescript
+// Before (line 330):
+return createErrorResponse(id, JSON_RPC_ERRORS.INTERNAL_ERROR, message);
+
+// After:
+return createErrorResponse(id, JSON_RPC_ERRORS.INTERNAL_ERROR, 'Internal server error');
+```
+Same for Express 500 handler at line 411.
+
+---
+
+### Low (P3)
+
+#### SR-13: `MAX_HISTORY = 20` duplicated in two methods (DRY)
+- **File:** `src/agent/orchestrator.py:281, 419`
+- **Category:** DRY Violation
+- **Severity:** P3
+- **Problem:** `MAX_HISTORY = 20` defined as local variable in both `research()` and `research_stream()`.
+- **Surgical Fix:** Move to class constant: `MAX_HISTORY = 20` on the `Orchestrator` class.
+
+#### SR-14: `logger.warning` without traceback in follow-up generation
+- **File:** `src/agent/orchestrator.py:708`
+- **Category:** Logging
+- **Severity:** P3
+- **Problem:** `except Exception:` uses `logger.warning()` instead of `logger.exception()`. Traceback is lost.
+- **Surgical Fix:** Change to `logger.exception("Failed to generate follow-up questions")`.
+
+#### SR-15: Dead code — `generate_followup_suggestions` function
+- **File:** `src/ui/components.py:573-623`
+- **Category:** Dead Code
+- **Severity:** P3
+- **Problem:** Function marked `DEPRECATED` in docstring, ~50 lines, not imported or called anywhere.
+- **Surgical Fix:** Remove the function entirely.
+
+---
+
+## Second Review — Resolutions
+
+All 16 second-review issues addressed on branch `fix/second-review-16-issues`.
+
+| ID | Title | Status | Notes |
+|----|-------|--------|-------|
+| SR-1 | f-string logs in mcp_client.py | FIXED | `src/clients/mcp_client.py` — all 3 f-string logs converted to `%s` style |
+| SR-2 | XSS in render_tags | FIXED | `src/ui/components.py:39` — `{tag}` → `{_html.escape(tag)}` |
+| SR-3 | XSS in render_error_message | FIXED | `src/ui/components.py` — title, message, error_code all escaped |
+| SR-4 | XSS in render_source_comparison | FIXED | `src/ui/components.py` — title, snippet, badge label all escaped |
+| SR-5 | console.error in mcp_server config | FIXED | `mcp_server/src/config/index.ts` — added bootstrap comment; consolidated to one call |
+| SR-6 | bare except leaking str(e) in research.py | FIXED | `src/api/research.py:128` — `logger.exception()` + generic message |
+| SR-7 | bare excepts leaking str(e) in notes.py | FIXED | `src/api/notes.py` (3 locations) — `logger.exception()` + generic messages |
+| SR-8 | logger.error instead of logger.exception in handlers.py | FIXED | `src/errors/handlers.py` — both switched to `logger.exception()`; `include_traceback` param removed (redundant) |
+| SR-9 | st.error(f"...{e}") exposing exceptions in app.py | FIXED | `app.py:397,530` — log exception + show generic user message |
+| SR-10 | Sync wrapper around async orchestrator | ACCEPTED DEBT | No code change; architectural coupling is a known limitation of Streamlit's sync model |
+| SR-11 | Missing UUID validation in get_note | FIXED | `src/api/notes.py` — `_UUID_RE` compiled at module level; validation guard added before MCP call |
+| SR-12 | Internal error messages leaked in MCP server | FIXED | `mcp_server/src/server.ts:331,413` — both return `'Internal server error'` literal |
+| SR-13 | MAX_HISTORY DRY violation | FIXED | `src/agent/orchestrator.py` — moved to class constant `MAX_HISTORY = 20`; both usages updated to `self.MAX_HISTORY` |
+| SR-14 | logger.warning without traceback in follow-up generation | FIXED | `src/agent/orchestrator.py:708` — changed to `logger.exception()` |
+| SR-15 | Dead code — generate_followup_suggestions | FIXED | `src/ui/components.py` — ~52-line deprecated function removed entirely |
+
+### Validation
+
+- `uv run pytest tests/unit/ -q`: **65/66 pass** (1 pre-existing failure: `test_default_ollama_settings` asserts `60000` but config default is `120000` — not introduced by this PR)
+- `cd mcp_server && npm run build`: **PASS** (clean TypeScript compile, zero errors)

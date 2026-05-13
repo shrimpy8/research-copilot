@@ -256,7 +256,8 @@ class MCPClient:
         request_id = request_id or str(uuid.uuid4())
 
         logger.info(
-            f"Calling MCP tool: {tool_name}",
+            "Calling MCP tool: %s",
+            tool_name,
             extra={
                 "request_id": request_id,
                 "tool_name": tool_name,
@@ -289,7 +290,9 @@ class MCPClient:
 
             if error:
                 logger.warning(
-                    f"MCP tool error: {tool_name} - {error}",
+                    "MCP tool error: %s - %s",
+                    tool_name,
+                    error,
                     extra={
                         "request_id": request_id,
                         "tool_name": tool_name,
@@ -304,7 +307,8 @@ class MCPClient:
                 )
 
             logger.info(
-                f"MCP tool completed: {tool_name}",
+                "MCP tool completed: %s",
+                tool_name,
                 extra={
                     "request_id": request_id,
                     "tool_name": tool_name,

@@ -14,6 +14,9 @@ from src.agent import Orchestrator
 from src.errors import ErrorCodes, OllamaError, MCPError
 from src.models import ApiResponse, ApiError
 from src.api.responses import success_response, error_response
+from src.utils.logger import setup_logger
+
+logger = setup_logger("research_copilot.api.research")
 
 
 @dataclass
@@ -125,10 +128,11 @@ class ResearchAPI:
                 error_type=e.error_type,
                 suggestion=e.suggestion or "Check if MCP server is running.",
             )
-        except Exception as e:
+        except Exception:
+            logger.exception("Research request failed")
             return error_response(
                 code=ErrorCodes.INTERNAL_ERROR,
-                message=str(e),
+                message="An unexpected error occurred. Please try again.",
                 error_type="internal_error",
                 suggestion="An unexpected error occurred. Please try again.",
             )
