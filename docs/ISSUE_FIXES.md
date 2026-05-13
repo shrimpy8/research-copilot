@@ -1196,3 +1196,46 @@ All 16 second-review issues addressed on branch `fix/second-review-16-issues`.
 
 - `uv run pytest tests/unit/ -q`: **65/66 pass** (1 pre-existing failure: `test_default_ollama_settings` asserts `60000` but config default is `120000` — not introduced by this PR)
 - `cd mcp_server && npm run build`: **PASS** (clean TypeScript compile, zero errors)
+
+---
+
+### Second Review — Verification
+
+**Verified by:** Claude Opus on 2026-05-13
+**Result:** 14/16 PASS — 2 items need attention
+
+#### Verified PASS (14 items)
+
+| SR | Status |
+|----|--------|
+| SR-1 | PASS — all 3 f-string logs converted to `%s`-style |
+| SR-2 | PASS — `_html.escape(tag)` in `render_tags` |
+| SR-3 | PASS — `title`, `message`, `error_code` all escaped in `render_error_message` |
+| SR-4 | PASS — `title`, `snippet`, `badge['label']` all escaped in `render_source_comparison` |
+| SR-5 | PASS — bootstrap comment documenting circular dependency |
+| SR-6 | PASS — `logger.exception()` + generic message, no `str(e)` |
+| SR-7 | PASS — all 3 notes.py locations use `logger.exception()` + generic message |
+| SR-8 | PASS — `logger.exception()` in handlers.py; `include_traceback` removed |
+| SR-10 | ACCEPTED DEBT — architectural limitation |
+| SR-11 | PASS — `_UUID_RE` at module level; validation guard before MCP call |
+| SR-12 | PASS — both error handlers return `'Internal server error'` literal |
+| SR-13 | PASS — class constant `MAX_HISTORY = 20`; `self.MAX_HISTORY` in both methods |
+| SR-14 | PASS — `logger.exception()` at line 707 |
+
+#### Remaining Issues (2 items — need follow-up fixes)
+
+##### SR-9 (P2): `app.py:529` still exposes `save_result.error` in `st.error()`
+- **Status:** PARTIAL — Lines 397-398 and 531-532 are fixed (generic messages), but line 529 still has `st.error(f"Failed to save note: {save_result.error}")` which exposes internal error details to the user.
+- **Fix:** Replace with generic message:
+```python
+# Before (line 529):
+st.error(f"Failed to save note: {save_result.error}")
+
+# After:
+logger.error("Failed to save note: %s", save_result.error)
+st.error("Failed to save note. Please try again.")
+```
+
+##### SR-15 (P3): Dead import of removed function in `src/ui/__init__.py`
+- **Status:** PARTIAL — Function removed from `components.py` but `src/ui/__init__.py` still exports `generate_followup_suggestions` (lines 34 and 81). This will cause `ImportError` if anything tries to import it from the `src.ui` module.
+- **Fix:** Remove `generate_followup_suggestions` from both the import line and the `__all__` list in `src/ui/__init__.py`.
