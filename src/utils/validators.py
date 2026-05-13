@@ -175,7 +175,7 @@ def validate_note_content(content: str) -> Tuple[bool, str]:
     return True, ""
 
 
-def validate_tags(tags: list) -> Tuple[bool, str]:
+def validate_tags(tags: list[str]) -> Tuple[bool, str]:
     """
     Validate note tags.
 

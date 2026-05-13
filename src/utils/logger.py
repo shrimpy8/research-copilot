@@ -9,7 +9,7 @@ import json
 import logging
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -109,7 +109,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format the log record as a JSON string."""
         log_obj: dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "message": LogRedactor.redact(record.getMessage()),
@@ -215,44 +215,26 @@ def setup_logger(name: str) -> logging.Logger:
 
 class LogContext:
     """
-    Context manager for adding extra fields to log records.
+    Thread-safe context manager for adding extra fields to log records.
+
+    Uses LoggerAdapter instead of setLogRecordFactory to avoid the global
+    race condition that occurs in Streamlit's multi-threaded environment.
 
     Usage:
-        with LogContext(logger, request_id="abc123", tool_name="web_search"):
-            logger.info("Starting search")  # Will include request_id and tool_name
+        with LogContext(logger, request_id="abc123") as log:
+            log.info("Starting search")  # Will include request_id
     """
 
     def __init__(self, logger: logging.Logger, **kwargs: Any):
-        """
-        Initialize the log context.
-
-        Args:
-            logger: Logger to add context to
-            **kwargs: Extra fields to add to log records
-        """
         self.logger = logger
         self.extra = kwargs
-        self._old_factory: Optional[Any] = None
+        self.adapter = logging.LoggerAdapter(logger, kwargs)
 
-    def __enter__(self) -> "LogContext":
-        """Enter the context and add extra fields to log records."""
-        old_factory = logging.getLogRecordFactory()
-        extra = self.extra
-
-        def record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
-            record = old_factory(*args, **kwargs)
-            for key, value in extra.items():
-                setattr(record, key, value)
-            return record
-
-        self._old_factory = old_factory
-        logging.setLogRecordFactory(record_factory)
-        return self
+    def __enter__(self) -> logging.LoggerAdapter:
+        return self.adapter
 
     def __exit__(self, *args: Any) -> None:
-        """Exit the context and restore the original log record factory."""
-        if self._old_factory:
-            logging.setLogRecordFactory(self._old_factory)
+        pass  # No global state to restore
 
 
 # Pre-configured loggers for common modules

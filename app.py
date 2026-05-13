@@ -20,7 +20,7 @@ from src.ui.state import (
     set_researching, set_error, set_current_sources,
     clear_history, show_save_dialog, hide_save_dialog,
     get_tool_traces, set_selected_note, get_latest_tool_traces,
-    _summarize_result
+    summarize_result
 )
 from src.ui.components import (
     render_error_message, render_save_note_dialog,
@@ -39,14 +39,14 @@ logger = setup_logger("research_copilot.app")
 def get_event_loop():
     """Get or create an event loop."""
     try:
-        return asyncio.get_event_loop()
+        return asyncio.get_running_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         return loop
 
 
-@st.cache_resource
+@st.cache_resource(ttl=300)
 def get_orchestrator() -> Orchestrator:
     """Get or create the orchestrator instance."""
     ollama = OllamaClient()
@@ -78,7 +78,7 @@ def run_research(query: str, status_placeholder=None) -> Optional[ResearchRespon
 
         # Tool callbacks for UI updates per PRD §4.5.1
         def on_tool_start(tool_name: str, args: dict):
-            logger.info(f"Tool starting: {tool_name}")
+            logger.info("Tool starting: %s", tool_name)
             # Update status placeholder with specific tool status
             if status_placeholder:
                 if tool_name == "web_search":
@@ -96,7 +96,7 @@ def run_research(query: str, status_placeholder=None) -> Optional[ResearchRespon
                     status_placeholder.markdown(f"⚙️ **Running {tool_name}...**")
 
         def on_tool_complete(tool_name: str, result: dict, success: bool):
-            logger.info(f"Tool complete: {tool_name}, success={success}")
+            logger.info("Tool complete: %s, success=%s", tool_name, success)
             # Update status back to generating
             if status_placeholder:
                 status_placeholder.markdown("✨ **Generating response...**")
@@ -131,9 +131,9 @@ def run_research(query: str, status_placeholder=None) -> Optional[ResearchRespon
 
         return response
 
-    except Exception as e:
-        logger.error(f"Research failed: {e}")
-        set_error(str(e))
+    except Exception:
+        logger.exception("Research failed")
+        set_error("Research failed. Please try again.")
         return None
     finally:
         set_researching(False)
@@ -141,17 +141,15 @@ def run_research(query: str, status_placeholder=None) -> Optional[ResearchRespon
 
 async def check_services() -> dict:
     """Check if required services are available."""
-    ollama = OllamaClient()
-    mcp = MCPClient()
+    async with OllamaClient() as ollama, MCPClient() as mcp:
+        ollama_ok = await ollama.is_available()
+        mcp_status = await mcp.health()
 
-    ollama_ok = await ollama.is_available()
-    mcp_status = await mcp.health()
-
-    return {
-        "ollama": ollama_ok,
-        "mcp": mcp_status.available,
-        "search_provider": mcp_status.search_provider
-    }
+        return {
+            "ollama": ollama_ok,
+            "mcp": mcp_status.available,
+            "search_provider": mcp_status.search_provider
+        }
 
 
 def render_sidebar():
@@ -167,13 +165,17 @@ def render_sidebar():
 
     # Model selection - only show preferred models that are installed
     loop = get_event_loop()
-    ollama = OllamaClient()
-    PREFERRED_MODELS = ["ministral-3:8b", "llama3.1:8b", "mistral:7b", "gemma3:4b"]
-    DEFAULT_MODEL = "ministral-3:8b"
+    PREFERRED_MODELS = settings.preferred_models
+    DEFAULT_MODEL = PREFERRED_MODELS[0] if PREFERRED_MODELS else "ministral-3:8b"
 
     model_options = [DEFAULT_MODEL]  # Fallback
+
+    async def _check_ollama_models() -> OllamaClient:
+        async with OllamaClient() as ollama:
+            return await ollama.health()
+
     try:
-        health = loop.run_until_complete(ollama.health())
+        health = loop.run_until_complete(_check_ollama_models())
         if health.available and health.models:
             # Only show preferred models that are installed
             installed_preferred = [m for m in PREFERRED_MODELS if m in health.models]
@@ -237,10 +239,14 @@ def render_sidebar():
 
     # Fetch notes from MCP
     loop = get_event_loop()
+
+    async def _list_notes_async(query, limit, offset):
+        async with MCPClient() as mcp:
+            return await mcp.list_notes(query=query, limit=limit, offset=offset)
+
     try:
-        mcp = MCPClient()
         notes_result = loop.run_until_complete(
-            mcp.list_notes(
+            _list_notes_async(
                 query=notes_search if notes_search else None,
                 limit=state.notes_page_size,
                 offset=state.notes_offset,
@@ -292,7 +298,7 @@ def render_sidebar():
         else:
             st.caption("_Notes from your research will appear here_")
     except Exception as e:
-        logger.debug(f"Could not fetch notes: {e}")
+        logger.debug("Could not fetch notes: %s", e)
         st.caption("_MCP server needed for notes_")
 
     # Clear history button
@@ -345,9 +351,13 @@ def render_sidebar():
 def render_note_viewer(note_id: str):
     """Render a note viewer for the selected note."""
     loop = get_event_loop()
+
+    async def _get_note_async(nid: str):
+        async with MCPClient() as mcp:
+            return await mcp.get_note(nid)
+
     try:
-        mcp = MCPClient()
-        result = loop.run_until_complete(mcp.get_note(note_id))
+        result = loop.run_until_complete(_get_note_async(note_id))
 
         if result.success and result.data:
             note = result.data.get("note", {})
@@ -494,9 +504,18 @@ def render_main_content():
             # Save note via MCP client
             try:
                 loop = get_event_loop()
-                mcp = MCPClient()
+
+                async def _save_note_async(title, content, tags, source_urls):
+                    async with MCPClient() as mcp:
+                        return await mcp.save_note(
+                            title=title,
+                            content=content,
+                            tags=tags,
+                            source_urls=source_urls
+                        )
+
                 save_result = loop.run_until_complete(
-                    mcp.save_note(
+                    _save_note_async(
                         title=note_data["title"],
                         content=note_data["content"],
                         tags=note_data["tags"],
@@ -595,7 +614,7 @@ def render_main_content():
                             "arguments": t.arguments,
                             "success": t.success,
                             "duration_ms": t.duration_ms,
-                            "result_summary": _summarize_result(t.tool_name, t.result) if t.result else t.error or "",
+                            "result_summary": summarize_result(t.tool_name, t.result) if t.result else t.error or "",
                             "request_id": t.request_id or response.request_id
                         }
                         for t in response.tool_trace

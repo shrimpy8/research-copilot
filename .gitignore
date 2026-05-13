@@ -36,6 +36,9 @@ data/*.sqlite3
 .idea/
 .vscode/
 
+# Scan / scratch artifacts
+result.txt
+
 # Internal docs (kept locally, not in repo)
 CLAUDE.md
 PROGRESS.md

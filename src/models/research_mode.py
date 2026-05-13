@@ -8,21 +8,8 @@ Prompts are externalized in prompts/ directory for easy editing.
 from dataclasses import dataclass
 from typing import Dict
 from pathlib import Path
-from functools import lru_cache
 
-# Base path for prompt files
-PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
-
-
-@lru_cache(maxsize=10)
-def _load_prompt_file(filename: str) -> str:
-    """Load a prompt file from the prompts directory. Cached for performance."""
-    filepath = PROMPTS_DIR / filename
-    if filepath.exists():
-        return filepath.read_text(encoding="utf-8").strip()
-    else:
-        # Fallback to empty string if file doesn't exist
-        return ""
+from src.utils.prompt_loader import load_prompt_file as _load_prompt_file, PROMPTS_DIR
 
 
 @dataclass(frozen=True)

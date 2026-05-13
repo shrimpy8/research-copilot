@@ -10,6 +10,7 @@ import { mkdirSync, existsSync } from 'fs';
 import { dirname } from 'path';
 import { config_values } from '../config/index.js';
 import { ErrorCodes, NoteError } from '../errors/index.js';
+import { logger } from '../logger.js';
 import { SCHEMA_STATEMENTS } from './schema.js';
 
 let db: Database.Database | null = null;
@@ -42,7 +43,7 @@ export function initDatabase(): Database.Database {
       db.exec(statement);
     }
 
-    console.log(`Database initialized at ${dbPath}`);
+    logger.info({ dbPath }, 'Database initialized');
     return db;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -71,7 +72,7 @@ export function closeDatabase(): void {
   if (db) {
     db.close();
     db = null;
-    console.log('Database connection closed');
+    logger.info('Database connection closed');
   }
 }
 

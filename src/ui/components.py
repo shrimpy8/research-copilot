@@ -12,9 +12,10 @@ This module provides all Streamlit UI rendering functions including:
 All styling uses centralized design tokens from src/ui/design_tokens.py.
 """
 
+import html as _html
 import re
 import streamlit as st
-from typing import List, Dict, Any, Optional
+from typing import Callable, List, Dict, Any, Optional
 
 from src.ui.design_tokens import Colors, BorderRadius, Typography, Spacing, tag_style
 
@@ -147,6 +148,11 @@ def render_source_card(
             ">{badge['label']}</span>
         """
 
+    safe_title = _html.escape(title[:60]) + ("..." if len(title) > 60 else "")
+    safe_url = _html.escape(url, quote=True)
+    safe_url_display = _html.escape(url[:50]) + ("..." if len(url) > 50 else "")
+    safe_snippet = (_html.escape(snippet[:150]) + "...") if snippet else ""
+
     with st.container():
         st.markdown(
             f"""
@@ -158,13 +164,13 @@ def render_source_card(
                 background: #F8F9FA;
             ">
                 <div style="font-weight: 600; color: #0066CC;">
-                    [{number}] {title[:60]}{'...' if len(title) > 60 else ''}
+                    [{number}] {safe_title}
                     {badge_html}
                 </div>
                 <div style="font-size: 12px; color: #6C757D; margin-top: 4px;">
-                    <a href="{url}" target="_blank" style="color: #0066CC;">{url[:50]}{'...' if len(url) > 50 else ''}</a>
+                    <a href="{safe_url}" target="_blank" style="color: #0066CC;">{safe_url_display}</a>
                 </div>
-                {f'<div style="font-size: 14px; margin-top: 8px; color: #1A1A1A;">{snippet[:150]}...</div>' if snippet else ''}
+                {f'<div style="font-size: 14px; margin-top: 8px; color: #1A1A1A;">{safe_snippet}</div>' if snippet else ''}
             </div>
             """,
             unsafe_allow_html=True
@@ -271,7 +277,7 @@ def render_note_card(
     tags: List[str],
     created_at: str,
     snippet: str = "",
-    on_click: Optional[callable] = None
+    on_click: Optional[Callable[[str], None]] = None
 ) -> None:
     """Render a note preview card."""
     with st.container():
@@ -495,11 +501,9 @@ def render_content_with_citations(
             source = sources[num - 1]
             url = source.get('url', '')
             title = source.get('title', f'Source {num}')
-            # Escape title for HTML attribute
-            import html
-            escaped_title = html.escape(title, quote=True)
-            # Create a superscript link
-            return f'<a href="{url}" target="_blank" title="{escaped_title}" style="color: #0066CC; text-decoration: none; font-size: 0.75em; vertical-align: super;">[{num}]</a>'
+            escaped_title = _html.escape(title, quote=True)
+            escaped_url = _html.escape(url, quote=True)
+            return f'<a href="{escaped_url}" target="_blank" title="{escaped_title}" style="color: #0066CC; text-decoration: none; font-size: 0.75em; vertical-align: super;">[{num}]</a>'
         return match.group(0)  # Return unchanged if no matching source
 
     return citation_pattern.sub(replace_citation, content)

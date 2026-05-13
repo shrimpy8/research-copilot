@@ -12,38 +12,22 @@ Research mode configuration is centralized in src/models/research_mode.py (DRY).
 Prompts are externalized in prompts/ directory for easy editing.
 """
 
+import json
 from typing import List, Dict, Any
 from pathlib import Path
-from functools import lru_cache
 from src.models.research_mode import get_mode_by_key
-
-# Base path for prompt files
-PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
-
-
-@lru_cache(maxsize=10)
-def _load_prompt_file(filename: str) -> str:
-    """Load a prompt file from the prompts directory. Cached for performance."""
-    filepath = PROMPTS_DIR / filename
-    if filepath.exists():
-        return filepath.read_text(encoding="utf-8").strip()
-    else:
-        raise FileNotFoundError(f"Prompt file not found: {filepath}")
+from src.utils.prompt_loader import load_prompt_file as _load_prompt_file, PROMPTS_DIR
 
 
 def get_tool_definitions() -> str:
     """Load tool definitions from external file."""
-    return _load_prompt_file("tool_definitions.md")
+    return _load_prompt_file("tool_definitions.md", raise_on_missing=True)
 
 
 def get_system_prompt_template() -> str:
     """Load system prompt template from external file."""
-    return _load_prompt_file("system_prompt.md")
+    return _load_prompt_file("system_prompt.md", raise_on_missing=True)
 
-
-# Convenience aliases for backward compatibility
-TOOL_DEFINITIONS = property(lambda self: get_tool_definitions())
-SYSTEM_PROMPT_TEMPLATE = property(lambda self: get_system_prompt_template())
 
 
 def build_system_prompt(
@@ -176,8 +160,6 @@ def _format_result_content(tool_name: str, result: Dict[str, Any]) -> str:
         return "\n".join(lines)
 
     else:
-        # Generic JSON formatting for unknown tools
-        import json
         return json.dumps(result, indent=2)
 
 

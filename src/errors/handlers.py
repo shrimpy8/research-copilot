@@ -118,13 +118,13 @@ def log_error(
     # Log at appropriate level based on error type
     if isinstance(error, ResearchError):
         if error.error_type == "internal_error":
-            logger.error(f"Internal error: {error.message}", extra=extra)
+            logger.error("Internal error: %s", error.message, extra=extra)
             if include_traceback:
                 logger.debug(traceback.format_exc())
         else:
-            logger.warning(f"Application error: {error.message}", extra=extra)
+            logger.warning("Application error: %s", error.message, extra=extra)
     else:
-        logger.error(f"Unexpected error: {str(error)}", extra=extra)
+        logger.error("Unexpected error: %s", str(error), extra=extra)
         if include_traceback:
             logger.debug(traceback.format_exc())
 

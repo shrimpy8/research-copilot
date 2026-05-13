@@ -73,7 +73,7 @@ def check_dependencies() -> ValidationResult:
             name="Python Dependencies",
             passed=False,
             message=f"Missing: {', '.join(missing)}",
-            suggestion=f"Run: pip install {' '.join(missing)}",
+            suggestion=f"Run: uv add {' '.join(missing)}",
         )
 
     return ValidationResult(

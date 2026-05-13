@@ -9,6 +9,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { config_values } from './config/index.js';
 import { initDatabase, closeDatabase } from './db/index.js';
 import { MCPServerError, ErrorCodes } from './errors/index.js';
+import { logger } from './logger.js';
 import { checkRateLimit, getRateLimitInfo } from './middleware/index.js';
 import { webSearch, fetchPage, saveNote, listNotes, getNote } from './tools/index.js';
 
@@ -87,27 +88,46 @@ async function handleToolCall(
   checkRateLimit(toolName);
 
   switch (toolName) {
-    case 'web_search':
-      return await webSearch(
-        params['query'] as string,
-        params['limit'] as number | undefined,
-        params['provider'] as 'duckduckgo' | 'serper' | undefined
-      );
+    case 'web_search': {
+      const query = params['query'];
+      if (typeof query !== 'string' || query.trim().length === 0) {
+        throw new MCPServerError(ErrorCodes.INVALID_REQUEST, 'web_search requires a non-empty string "query"');
+      }
+      const limit = params['limit'];
+      if (limit !== undefined && (typeof limit !== 'number' || !Number.isFinite(limit))) {
+        throw new MCPServerError(ErrorCodes.INVALID_REQUEST, 'web_search "limit" must be a number');
+      }
+      return await webSearch(query, limit as number | undefined, params['provider'] as 'duckduckgo' | 'serper' | undefined);
+    }
 
-    case 'fetch_page':
-      return await fetchPage(
-        params['url'] as string,
-        params['max_chars'] as number | undefined,
-        params['extract_mode'] as 'text' | 'markdown' | undefined
-      );
+    case 'fetch_page': {
+      const url = params['url'];
+      if (typeof url !== 'string' || url.trim().length === 0) {
+        throw new MCPServerError(ErrorCodes.INVALID_REQUEST, 'fetch_page requires a non-empty string "url"');
+      }
+      const maxChars = params['max_chars'];
+      if (maxChars !== undefined && (typeof maxChars !== 'number' || !Number.isFinite(maxChars))) {
+        throw new MCPServerError(ErrorCodes.INVALID_REQUEST, 'fetch_page "max_chars" must be a number');
+      }
+      return await fetchPage(url, maxChars as number | undefined, params['extract_mode'] as 'text' | 'markdown' | undefined);
+    }
 
-    case 'save_note':
+    case 'save_note': {
+      const title = params['title'];
+      const content = params['content'];
+      if (typeof title !== 'string' || title.trim().length === 0) {
+        throw new MCPServerError(ErrorCodes.INVALID_REQUEST, 'save_note requires a non-empty string "title"');
+      }
+      if (typeof content !== 'string' || content.trim().length === 0) {
+        throw new MCPServerError(ErrorCodes.INVALID_REQUEST, 'save_note requires a non-empty string "content"');
+      }
       return saveNote({
-        title: params['title'] as string,
-        content: params['content'] as string,
+        title,
+        content,
         tags: params['tags'] as string[] | undefined,
         source_urls: params['source_urls'] as string[] | undefined,
       });
+    }
 
     case 'list_notes':
       return listNotes({
@@ -117,10 +137,13 @@ async function handleToolCall(
         offset: params['offset'] as number | undefined,
       });
 
-    case 'get_note':
-      return getNote({
-        id: params['id'] as string,
-      });
+    case 'get_note': {
+      const id = params['id'];
+      if (typeof id !== 'string' || id.trim().length === 0) {
+        throw new MCPServerError(ErrorCodes.INVALID_REQUEST, 'get_note requires a non-empty string "id"');
+      }
+      return getNote({ id });
+    }
 
     default:
       throw new MCPServerError(
@@ -303,7 +326,7 @@ async function handleJsonRpcRequest(request: JsonRpcRequest): Promise<JsonRpcRes
 
     // Handle unexpected errors
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Unexpected error:', error);
+    logger.error({ err: error }, 'Unexpected error');
 
     return createErrorResponse(id, JSON_RPC_ERRORS.INTERNAL_ERROR, message);
   }
@@ -363,7 +386,7 @@ export function createApp(): express.Application {
 
       res.json(response);
     } catch (error) {
-      console.error('Request handling error:', error);
+      logger.error({ err: error }, 'Request handling error');
       res.json(
         createErrorResponse(
           null,
@@ -384,7 +407,7 @@ export function createApp(): express.Application {
 
   // Error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Unhandled error:', err);
+    logger.error({ err }, 'Unhandled error');
     res.status(500).json({
       error: 'Internal server error',
       message: err.message,
@@ -406,18 +429,15 @@ export function startServer(): void {
   const host = config_values.host;
 
   const server = app.listen(port, host, () => {
-    console.log(`MCP Server running at http://${host}:${port}`);
-    console.log(`Health check: http://${host}:${port}/health`);
-    console.log(`MCP endpoint: http://${host}:${port}/mcp`);
-    console.log(`Search provider: ${config_values.searchProvider}`);
+    logger.info({ port, host, searchProvider: config_values.searchProvider }, 'MCP Server started');
   });
 
   // Graceful shutdown
   const shutdown = () => {
-    console.log('\nShutting down...');
+    logger.info('Shutting down...');
     server.close(() => {
       closeDatabase();
-      console.log('Server closed');
+      logger.info('Server closed');
       process.exit(0);
     });
   };
