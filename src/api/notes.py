@@ -83,7 +83,7 @@ class NotesAPI:
                 return success_response(data=result.data, start_time=start_time)
             return error_response(
                 code=ErrorCodes.NOTE_SAVE_FAILED,
-                message=result.error.message if result.error else "Failed to save note",
+                message=result.error if result.error else "Failed to save note",
                 error_type="tool_error",
                 suggestion="Check MCP server status.",
             )

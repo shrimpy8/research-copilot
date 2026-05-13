@@ -6,6 +6,7 @@ Includes health checking, retry logic, and streaming support.
 """
 
 import asyncio
+import json as json_module
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Optional
 
@@ -149,7 +150,7 @@ class OllamaClient:
             )
 
         except httpx.ConnectError as e:
-            logger.debug(f"Ollama connection error: {e}")
+            logger.debug("Ollama connection error: %s", e)
             return OllamaHealthStatus(
                 available=False,
                 error="Cannot connect to Ollama. Is it running?",
@@ -225,7 +226,7 @@ class OllamaClient:
             **kwargs,
         }
 
-        logger.debug(f"Sending chat request to Ollama: model={model}")
+        logger.debug("Sending chat request to Ollama", extra={"model": model})
 
         for attempt in range(self.max_retries):
             try:
@@ -316,7 +317,7 @@ class OllamaClient:
             **kwargs,
         }
 
-        logger.debug(f"Starting streaming chat request: model={model}")
+        logger.debug("Starting streaming chat request", extra={"model": model})
 
         try:
             async with client.stream(
@@ -338,9 +339,6 @@ class OllamaClient:
                         message=f"Ollama returned status {response.status_code}",
                         model=model,
                     )
-
-                # Stream the response line by line
-                import json as json_module
 
                 async for line in response.aiter_lines():
                     if line:

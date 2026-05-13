@@ -222,7 +222,7 @@ def get_tool_traces() -> List[Dict[str, Any]]:
             "arguments": t.arguments,
             "success": t.success,
             "duration_ms": t.duration_ms,
-            "result_summary": _summarize_result(t.tool_name, t.result) if t.result else t.error or "",
+            "result_summary": summarize_result(t.tool_name, t.result) if t.result else t.error or "",
             "request_id": t.request_id or f"mcp_{i+1}"
         }
         for i, t in enumerate(state.tool_traces)
@@ -272,7 +272,7 @@ def get_latest_tool_traces(max_queries: int = 1) -> List[Dict[str, Any]]:
     return results
 
 
-def _summarize_result(tool_name: str, result: Dict[str, Any]) -> str:
+def summarize_result(tool_name: str, result: Dict[str, Any]) -> str:
     """Create a brief summary of a tool result."""
     if tool_name == "web_search":
         count = len(result.get("results", []))

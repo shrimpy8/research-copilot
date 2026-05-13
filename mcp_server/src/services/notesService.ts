@@ -229,11 +229,11 @@ export function listNotes(input: ListNotesInput = {}): { notes: NoteListItem[]; 
       JOIN notes_fts fts ON n.rowid = fts.rowid
       WHERE notes_fts MATCH ?
     `;
-    // FTS5 query syntax: escape special characters and add prefix matching
+    // FTS5 query: double-quote each term and escape embedded quotes to prevent injection
     const ftsQuery = input.query!
       .trim()
       .split(/\s+/)
-      .map((term) => `"${term}"*`)
+      .map((term) => `"${term.replace(/"/g, '""')}"*`)
       .join(' OR ');
     params.push(ftsQuery);
     countParams.push(ftsQuery);
@@ -250,14 +250,22 @@ export function listNotes(input: ListNotesInput = {}): { notes: NoteListItem[]; 
     `;
   }
 
-  // Add tag filtering
+  // Add tag filtering — use precise boundary patterns to avoid false positives
+  // e.g. tag "ai" should not match "fair" or "aisle"
   if (hasTags) {
-    // Filter by tags using JSON array containment
     for (const tag of input.tags!) {
-      sql += ` AND tags LIKE ?`;
-      params.push(`%"${tag}"%`);
-      countSql += ` AND tags LIKE ?`;
-      countParams.push(`%"${tag}"%`);
+      const escaped = tag.replace(/"/g, '""');
+      // Match tag as first, last, only, or middle element of the JSON array
+      sql += ` AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags = ?)`;
+      params.push(`%,"${escaped}"]%`);   // last element
+      params.push(`["${escaped}",%`);    // first element
+      params.push(`%,"${escaped}",%`);   // middle element
+      params.push(`["${escaped}"]`);     // only element
+      countSql += ` AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags = ?)`;
+      countParams.push(`%,"${escaped}"]%`);
+      countParams.push(`["${escaped}",%`);
+      countParams.push(`%,"${escaped}",%`);
+      countParams.push(`["${escaped}"]`);
     }
   }
 
@@ -306,7 +314,7 @@ export function searchNoteIds(searchQuery: string, limit: number = DEFAULT_LIMIT
   const ftsQuery = searchQuery
     .trim()
     .split(/\s+/)
-    .map((term) => `"${term}"*`)
+    .map((term) => `"${term.replace(/"/g, '""')}"*`)
     .join(' OR ');
 
   const sql = `

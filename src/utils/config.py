@@ -6,7 +6,7 @@ All configuration is loaded from environment variables with sensible defaults.
 """
 
 from pathlib import Path
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     enable_tool_trace: bool = True
     enable_note_saving: bool = True
     enable_deep_dive_mode: bool = True
+
+    # UI
+    preferred_models: List[str] = ["ministral-3:8b", "llama3.1:8b", "mistral:7b", "gemma3:4b"]
 
     # Development
     dev_mock_search: bool = False

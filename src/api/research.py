@@ -11,8 +11,8 @@ from dataclasses import dataclass
 import time
 
 from src.agent import Orchestrator
-from src.errors import ErrorCodes
-from src.models import ApiResponse
+from src.errors import ErrorCodes, OllamaError, MCPError
+from src.models import ApiResponse, ApiError
 from src.api.responses import success_response, error_response
 
 
@@ -85,7 +85,7 @@ class ResearchAPI:
             response = await self.orchestrator.research(
                 request.query,
                 on_tool_start=on_progress,
-                on_tool_complete=on_progress
+                on_tool_complete=None  # on_progress has wrong signature for on_tool_complete (2 args vs 3)
             )
 
             data = {
@@ -111,12 +111,26 @@ class ResearchAPI:
                 start_time=start_time,
             )
 
+        except OllamaError as e:
+            return error_response(
+                code=e.code,
+                message=e.message,
+                error_type=e.error_type,
+                suggestion=e.suggestion or "Check if Ollama is running.",
+            )
+        except MCPError as e:
+            return error_response(
+                code=e.code,
+                message=e.message,
+                error_type=e.error_type,
+                suggestion=e.suggestion or "Check if MCP server is running.",
+            )
         except Exception as e:
             return error_response(
-                code=ErrorCodes.SERVICE_ERROR,
+                code=ErrorCodes.INTERNAL_ERROR,
                 message=str(e),
-                error_type="research_error",
-                suggestion="Check if Ollama and MCP server are running.",
+                error_type="internal_error",
+                suggestion="An unexpected error occurred. Please try again.",
             )
 
     async def health_check(self) -> Dict[str, Any]:

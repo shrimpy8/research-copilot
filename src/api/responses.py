@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, TypeVar
 
 from src.models import ApiResponse, ApiError, ResponseMeta
@@ -29,7 +29,7 @@ def success_response(
         error=None,
         meta=ResponseMeta(
             request_id=request_id or f"req_{uuid.uuid4().hex[:16]}",
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             duration_ms=duration_ms,
         ),
     )
@@ -58,7 +58,7 @@ def error_response(
         ),
         meta=ResponseMeta(
             request_id=request_id or f"req_{uuid.uuid4().hex[:16]}",
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             duration_ms=0,
         ),
     )

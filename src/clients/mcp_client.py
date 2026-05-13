@@ -202,7 +202,7 @@ class MCPClient:
             )
 
         except httpx.ConnectError as e:
-            logger.debug(f"MCP server connection error: {e}")
+            logger.debug("MCP server connection error: %s", e)
             return MCPHealthStatus(
                 available=False,
                 error="Cannot connect to MCP server. Is it running?",

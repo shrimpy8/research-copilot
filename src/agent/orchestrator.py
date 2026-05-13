@@ -7,6 +7,7 @@ Handles multi-turn conversations with tool execution and result integration.
 
 import asyncio
 import uuid
+
 from typing import AsyncIterator, List, Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -114,13 +115,13 @@ class Orchestrator:
         """Set the research mode (quick or deep)."""
         if mode in RESEARCH_MODES:
             self.research_mode = mode
-            logger.info(f"Research mode set to: {mode}")
+            logger.info("Research mode set to: %s", mode)
 
     def set_fetch_extract_mode(self, mode: str) -> None:
         """Set the fetch extract mode (text or markdown)."""
         if mode in ["text", "markdown"]:
             self.fetch_extract_mode = mode
-            logger.info(f"Fetch extract mode set to: {mode}")
+            logger.info("Fetch extract mode set to: %s", mode)
 
     def set_model(self, model: str) -> None:
         """Set the LLM model for the orchestrator."""
@@ -131,7 +132,7 @@ class Orchestrator:
         """Set the LLM temperature (0.0-1.0, lower = more focused)."""
         if 0.0 <= temperature <= 1.0:
             self.temperature = temperature
-            logger.info(f"Temperature set to: {temperature}")
+            logger.info("Temperature set to: %s", temperature)
 
     async def research(
         self,
@@ -189,22 +190,22 @@ class Orchestrator:
                     messages,
                     on_text_chunk if iterations == 1 else None
                 )
-            except OllamaError as e:
-                logger.error(f"LLM error: {e}")
+            except OllamaError:
+                logger.exception("LLM error")
                 raise
 
-            # Debug: Log first 500 chars of LLM response to diagnose tool call issues
             logger.debug(
-                f"LLM response preview (iteration {iterations}): {llm_response[:500]}...",
+                "LLM response preview (iteration %d): %s...",
+                iterations,
+                llm_response[:500],
                 extra={"request_id": self._request_id}
             )
 
-            # Parse for tool calls
             parse_result = parse_tool_calls(llm_response)
 
-            # Debug: Log parse result
             logger.info(
-                f"Parsed {len(parse_result.tool_calls)} tool calls from response",
+                "Parsed %d tool calls from response",
+                len(parse_result.tool_calls),
                 extra={"request_id": self._request_id, "has_incomplete": parse_result.has_incomplete}
             )
 
@@ -270,16 +271,19 @@ class Orchestrator:
                     final_response = final_response.split("<tool_call>")[0].strip()
                 if not final_response:
                     final_response = "I gathered information from multiple sources but couldn't generate a complete summary. Please check the sources below for details."
-            except Exception as e:
-                logger.error(f"Failed to get final summary: {e}")
+            except Exception:
+                logger.exception("Failed to get final summary")
                 final_response = "Research completed but summary generation failed. Please check the sources below."
 
         # Calculate total duration
         total_duration = (datetime.now() - start_time).total_seconds() * 1000
 
-        # Update conversation history
+        # Update conversation history (keep last 20 messages to avoid unbounded growth)
+        MAX_HISTORY = 20
         self.conversation_history.append(Message(role="user", content=query))
         self.conversation_history.append(Message(role="assistant", content=final_response))
+        if len(self.conversation_history) > MAX_HISTORY:
+            self.conversation_history = self.conversation_history[-MAX_HISTORY:]
 
         logger.info(
             "Research complete",
@@ -412,9 +416,11 @@ class Orchestrator:
                 "content": "Tool results:\n\n" + "\n\n".join(tool_results)
             })
 
-        # Update conversation history
+        MAX_HISTORY = 20
         self.conversation_history.append(Message(role="user", content=query))
         self.conversation_history.append(Message(role="assistant", content=accumulated_response))
+        if len(self.conversation_history) > MAX_HISTORY:
+            self.conversation_history = self.conversation_history[-MAX_HISTORY:]
 
     async def _get_llm_response(
         self,
@@ -458,7 +464,8 @@ class Orchestrator:
         # Validate tool name to prevent LLM hallucinations from wasting time
         if tool_call.name not in self.VALID_TOOLS:
             logger.warning(
-                f"Skipping unknown tool: {tool_call.name}",
+                "Skipping unknown tool: %s",
+                tool_call.name,
                 extra={"request_id": self._request_id, "tool_name": tool_call.name}
             )
             if on_complete:
@@ -479,7 +486,8 @@ class Orchestrator:
             on_start(tool_call.name, tool_call.arguments)
 
         logger.info(
-            f"Executing tool: {tool_call.name}",
+            "Executing tool: %s",
+            tool_call.name,
             extra={
                 "request_id": self._request_id,
                 "tool_name": tool_call.name,
@@ -527,11 +535,11 @@ class Orchestrator:
         except MCPError as e:
             duration_ms = (datetime.now() - start_time).total_seconds() * 1000
 
-            logger.error(
-                f"Tool execution failed: {tool_call.name}",
+            logger.exception(
+                "Tool execution failed: %s",
+                tool_call.name,
                 extra={
                     "request_id": self._request_id,
-                    "error": str(e)
                 }
             )
 
@@ -673,31 +681,31 @@ What are the main limitations?
 Can you show a practical example?"""
 
         try:
-            # Use a quick LLM call for follow-up generation
-            response = await self.ollama.chat(
-                model=self.model,
-                messages=[{"role": "user", "content": followup_prompt}],
-                options={"temperature": 0.7, "num_predict": 200}  # Slightly creative, short response
+            response = await asyncio.wait_for(
+                self.ollama.chat(
+                    model=self.model,
+                    messages=[{"role": "user", "content": followup_prompt}],
+                    options={"temperature": 0.7, "num_predict": 200}
+                ),
+                timeout=15.0
             )
 
             if response and response.message and response.message.content:
-                # Parse the response into individual questions
                 lines = response.message.content.strip().split('\n')
                 questions = []
                 for line in lines:
-                    # Clean up each line
                     q = line.strip().strip('0123456789.-) ').strip()
                     if q and len(q) > 10 and q.endswith('?'):
-                        questions.append(q[:80])  # Max 80 chars
+                        questions.append(q[:80])
                     if len(questions) >= 3:
                         break
 
                 if questions:
-                    logger.debug(f"Generated {len(questions)} follow-up questions")
+                    logger.debug("Generated %d follow-up questions", len(questions))
                     return questions[:3]
 
-        except Exception as e:
-            logger.warning(f"Failed to generate follow-up questions: {e}")
+        except Exception:
+            logger.warning("Failed to generate follow-up questions")
 
         # Fallback to basic questions if LLM fails
         return self._fallback_followup_questions(query)
