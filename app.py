@@ -526,7 +526,8 @@ def render_main_content():
                 if save_result.success:
                     st.success(f"Note '{note_data['title']}' saved!")
                 else:
-                    st.error(f"Failed to save note: {save_result.error}")
+                    logger.warning("Failed to save note: %s", save_result.error)
+                    st.error("Failed to save note. Please try again.")
             except Exception:
                 logger.exception("Could not save note")
                 st.error("Could not save note. Please try again.")

@@ -31,7 +31,6 @@ from .components import (
     render_save_note_dialog,
     render_content_with_citations,
     render_followup_chips,
-    generate_followup_suggestions,
     render_research_trail,
     render_chat_message,
 )
@@ -78,7 +77,6 @@ __all__ = [
     "render_save_note_dialog",
     "render_content_with_citations",
     "render_followup_chips",
-    "generate_followup_suggestions",
     "render_research_trail",
     "render_chat_message",
     # State
