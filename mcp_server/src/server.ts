@@ -325,10 +325,9 @@ async function handleJsonRpcRequest(request: JsonRpcRequest): Promise<JsonRpcRes
     }
 
     // Handle unexpected errors
-    const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ err: error }, 'Unexpected error');
 
-    return createErrorResponse(id, JSON_RPC_ERRORS.INTERNAL_ERROR, message);
+    return createErrorResponse(id, JSON_RPC_ERRORS.INTERNAL_ERROR, 'Internal server error');
   }
 }
 
@@ -410,7 +409,7 @@ export function createApp(): express.Application {
     logger.error({ err }, 'Unhandled error');
     res.status(500).json({
       error: 'Internal server error',
-      message: err.message,
+      message: 'Internal server error',
     });
   });
 

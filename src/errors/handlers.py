@@ -4,7 +4,6 @@ Error handlers for Research Copilot.
 Provides error normalization and centralized error handling utilities.
 """
 
-import traceback
 from typing import Any, Optional
 
 from src.errors.codes import ErrorCodes, get_error_type
@@ -97,7 +96,6 @@ def handle_http_error(status_code: int, url: str) -> ResearchError:
 def log_error(
     error: Exception,
     request_id: Optional[str] = None,
-    include_traceback: bool = True,
 ) -> None:
     """
     Log an error with appropriate context.
@@ -105,7 +103,6 @@ def log_error(
     Args:
         error: The error to log
         request_id: Optional request ID for tracing
-        include_traceback: Whether to include full traceback
     """
     extra = {}
     if request_id:
@@ -118,15 +115,11 @@ def log_error(
     # Log at appropriate level based on error type
     if isinstance(error, ResearchError):
         if error.error_type == "internal_error":
-            logger.error("Internal error: %s", error.message, extra=extra)
-            if include_traceback:
-                logger.debug(traceback.format_exc())
+            logger.exception("Internal error: %s", error.message, extra=extra)
         else:
             logger.warning("Application error: %s", error.message, extra=extra)
     else:
-        logger.error("Unexpected error: %s", str(error), extra=extra)
-        if include_traceback:
-            logger.debug(traceback.format_exc())
+        logger.exception("Unexpected error", extra=extra)
 
 
 def create_error_response(error: ResearchError) -> dict[str, Any]:

@@ -4,6 +4,7 @@ Notes API interface for Research Copilot.
 Per PRD §8.1 - Internal API routes for note operations.
 """
 
+import re
 import time
 from typing import Optional
 
@@ -12,6 +13,14 @@ from src.errors import ErrorCodes
 from src.models import NoteCreate, NoteQuery, ApiResponse
 from src.api.responses import success_response, error_response
 from src.utils.validators import validate_note_title, validate_note_content, validate_tags
+from src.utils.logger import setup_logger
+
+logger = setup_logger("research_copilot.api.notes")
+
+_UUID_RE = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+    re.IGNORECASE,
+)
 
 
 class NotesAPI:
@@ -88,10 +97,11 @@ class NotesAPI:
                 suggestion="Check MCP server status.",
             )
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to save note")
             return error_response(
                 code=ErrorCodes.MCP_SERVER_UNAVAILABLE,
-                message=str(e),
+                message="Failed to save note. Please try again.",
                 error_type="service_error",
                 suggestion="Check MCP server connection.",
             )
@@ -106,6 +116,13 @@ class NotesAPI:
         Returns:
             ApiResponse with note data or error
         """
+        if not note_id or not _UUID_RE.match(note_id.strip()):
+            return error_response(
+                code=ErrorCodes.INVALID_REQUEST,
+                message="Invalid note ID format",
+                error_type="validation_error",
+            )
+
         try:
             result = await self.mcp.get_note(note_id)
 
@@ -118,10 +135,11 @@ class NotesAPI:
                 suggestion="The note may have been deleted.",
             )
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to get note %s", note_id)
             return error_response(
                 code=ErrorCodes.MCP_SERVER_UNAVAILABLE,
-                message=str(e),
+                message="Failed to retrieve note. Please try again.",
                 error_type="service_error",
             )
 
@@ -151,10 +169,11 @@ class NotesAPI:
                 error_type="tool_error",
             )
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to list notes")
             return error_response(
                 code=ErrorCodes.MCP_SERVER_UNAVAILABLE,
-                message=str(e),
+                message="Failed to list notes. Please try again.",
                 error_type="service_error",
             )
 

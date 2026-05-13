@@ -393,8 +393,9 @@ def render_note_viewer(note_id: str):
             if st.button("← Back"):
                 set_selected_note(None)
                 st.rerun()
-    except Exception as e:
-        st.error(f"Error loading note: {e}")
+    except Exception:
+        logger.exception("Error loading note")
+        st.error("Error loading note. Please try again.")
         if st.button("← Back"):
             set_selected_note(None)
             st.rerun()
@@ -526,8 +527,9 @@ def render_main_content():
                     st.success(f"Note '{note_data['title']}' saved!")
                 else:
                     st.error(f"Failed to save note: {save_result.error}")
-            except Exception as e:
-                st.error(f"Could not save note: {e}")
+            except Exception:
+                logger.exception("Could not save note")
+                st.error("Could not save note. Please try again.")
             hide_save_dialog()
             st.rerun()
 
