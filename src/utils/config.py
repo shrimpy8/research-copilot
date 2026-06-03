@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     enable_tool_trace: bool = True
     enable_note_saving: bool = True
     enable_deep_dive_mode: bool = True
+    enable_followup_questions: bool = True  # Set to False to skip the extra follow-up LLM call
 
     # UI
     preferred_models: List[str] = ["ministral-3:8b", "llama3.1:8b", "mistral:7b", "gemma3:4b"]

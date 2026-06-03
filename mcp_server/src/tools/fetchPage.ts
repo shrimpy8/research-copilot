@@ -61,6 +61,12 @@ const ALLOWED_PROTOCOLS = ['http:', 'https:'];
 const MAX_REDIRECTS = 5;
 
 /**
+ * Hard cap on raw response bytes before any extraction.
+ * Prevents memory exhaustion from oversized HTML bodies.
+ */
+const MAX_FETCH_BYTES = 5 * 1024 * 1024; // 5 MB
+
+/**
  * Check if an IP address is in a private or local range
  */
 function isPrivateIp(ip: string): boolean {
@@ -381,7 +387,71 @@ export async function fetchPage(
       );
     }
 
-    const html = await response.text();
+    // Enforce raw byte cap before reading the body into memory.
+    // Check Content-Length first for an early rejection, then verify the
+    // actual buffer size for chunked/compressed responses.
+    const contentLengthHeader = response.headers.get('content-length');
+    if (contentLengthHeader) {
+      const contentLength = parseInt(contentLengthHeader, 10);
+      if (!isNaN(contentLength) && contentLength > MAX_FETCH_BYTES) {
+        throw new FetchError(
+          ErrorCodes.FETCH_FAILED,
+          `Response too large: Content-Length ${contentLength} bytes exceeds ${MAX_FETCH_BYTES} byte limit`,
+          { contentLength, limit: MAX_FETCH_BYTES }
+        );
+      }
+    }
+
+    // Stream the response body, aborting early if the size limit is exceeded.
+    // This prevents full-body allocation for chunked/streaming responses where
+    // Content-Length is absent or untrustworthy.
+    let html: string;
+    if (response.body == null) {
+      // Rare: body is null (e.g. 204-like response that still passed ok check).
+      // Fall back to arrayBuffer — Content-Length guard above already ran.
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength > MAX_FETCH_BYTES) {
+        throw new FetchError(
+          ErrorCodes.FETCH_FAILED,
+          `Response too large: ${buffer.byteLength} bytes exceeds ${MAX_FETCH_BYTES} byte limit`,
+          { byteLength: buffer.byteLength, limit: MAX_FETCH_BYTES }
+        );
+      }
+      html = new TextDecoder().decode(buffer);
+    } else {
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+      const reader = response.body.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_FETCH_BYTES) {
+            await reader.cancel();
+            throw new FetchError(
+              ErrorCodes.FETCH_FAILED,
+              `Response too large: exceeds ${MAX_FETCH_BYTES} byte limit`,
+              { limit: MAX_FETCH_BYTES }
+            );
+          }
+          chunks.push(value);
+        }
+      } catch (err) {
+        // Re-throw FetchError directly; cancel the reader for other errors.
+        if (!(err instanceof FetchError)) {
+          await reader.cancel().catch(() => undefined);
+        }
+        throw err;
+      }
+      const assembled = new Uint8Array(totalBytes);
+      let offset = 0;
+      for (const chunk of chunks) {
+        assembled.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      html = new TextDecoder().decode(assembled);
+    }
     let { content, title, truncated } = extractContent(html, cappedMaxChars);
 
     if (extractMode === 'markdown') {

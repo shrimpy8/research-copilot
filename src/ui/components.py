@@ -490,7 +490,13 @@ def render_content_with_citations(
         return ""
 
     if not sources:
-        return content
+        # Escape raw content even when there are no citation sources
+        return _html.escape(content)
+
+    # Escape content first so that any HTML in the assistant message is neutralized.
+    # Citation markers like [1] contain no HTML characters, so they survive escaping
+    # unchanged and can be replaced safely with trusted anchor HTML afterwards.
+    escaped_content = _html.escape(content)
 
     # Pattern to match citation numbers like [1], [2], etc.
     citation_pattern = re.compile(r'\[(\d+)\]')
@@ -506,7 +512,7 @@ def render_content_with_citations(
             return f'<a href="{escaped_url}" target="_blank" title="{escaped_title}" style="color: #0066CC; text-decoration: none; font-size: 0.75em; vertical-align: super;">[{num}]</a>'
         return match.group(0)  # Return unchanged if no matching source
 
-    return citation_pattern.sub(replace_citation, content)
+    return citation_pattern.sub(replace_citation, escaped_content)
 
 
 def render_followup_chips(

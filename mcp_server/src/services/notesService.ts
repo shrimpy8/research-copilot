@@ -74,6 +74,10 @@ const MAX_TAGS = 10;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_SNIPPET_LENGTH = 100;
+const MAX_CONTENT_LENGTH = 50_000;
+const MAX_SOURCE_URLS = 20;
+const MAX_SOURCE_URL_LENGTH = 2048;
+const MAX_TAG_LENGTH = 100;
 
 /**
  * Convert a database row to a Note object
@@ -134,12 +138,51 @@ function validateNoteInput(input: CreateNoteInput): void {
     );
   }
 
+  if (input.content.length > MAX_CONTENT_LENGTH) {
+    throw new NoteError(
+      ErrorCodes.NOTE_VALIDATION_ERROR,
+      `Note content too large: ${input.content.length} characters exceeds ${MAX_CONTENT_LENGTH} character limit`,
+      { maxLength: MAX_CONTENT_LENGTH, actualLength: input.content.length }
+    );
+  }
+
   if (input.tags && input.tags.length > MAX_TAGS) {
     throw new NoteError(
       ErrorCodes.NOTE_TOO_MANY_TAGS,
       `Maximum ${MAX_TAGS} tags allowed`,
       { maxTags: MAX_TAGS, actualTags: input.tags.length }
     );
+  }
+
+  if (input.tags) {
+    for (const tag of input.tags) {
+      if (tag.length > MAX_TAG_LENGTH) {
+        throw new NoteError(
+          ErrorCodes.NOTE_VALIDATION_ERROR,
+          `Tag too long: "${tag.slice(0, 20)}..." exceeds ${MAX_TAG_LENGTH} character limit`,
+          { maxLength: MAX_TAG_LENGTH, actualLength: tag.length }
+        );
+      }
+    }
+  }
+
+  if (input.source_urls) {
+    if (input.source_urls.length > MAX_SOURCE_URLS) {
+      throw new NoteError(
+        ErrorCodes.NOTE_VALIDATION_ERROR,
+        `Too many source URLs: ${input.source_urls.length} exceeds limit of ${MAX_SOURCE_URLS}`,
+        { maxUrls: MAX_SOURCE_URLS, actualUrls: input.source_urls.length }
+      );
+    }
+    for (const url of input.source_urls) {
+      if (url.length > MAX_SOURCE_URL_LENGTH) {
+        throw new NoteError(
+          ErrorCodes.NOTE_VALIDATION_ERROR,
+          `Source URL too long: exceeds ${MAX_SOURCE_URL_LENGTH} character limit`,
+          { maxLength: MAX_SOURCE_URL_LENGTH, actualLength: url.length }
+        );
+      }
+    }
   }
 }
 

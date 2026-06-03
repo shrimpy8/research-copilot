@@ -29,6 +29,7 @@ export const ErrorCodes = {
   NOTE_CONTENT_REQUIRED: 'note_content_required',
   NOTE_TITLE_TOO_LONG: 'note_title_too_long',
   NOTE_TOO_MANY_TAGS: 'note_too_many_tags',
+  NOTE_VALIDATION_ERROR: 'note_validation_error',
   NOTES_DB_UNAVAILABLE: 'notes_db_unavailable',
   NOTES_QUERY_FAILED: 'notes_query_failed',
 

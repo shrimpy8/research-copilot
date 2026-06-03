@@ -13,10 +13,20 @@ Prompts are externalized in prompts/ directory for easy editing.
 """
 
 import json
+import re as _re
 from typing import List, Dict, Any
 from pathlib import Path
 from src.models.research_mode import get_mode_by_key
 from src.utils.prompt_loader import load_prompt_file as _load_prompt_file, PROMPTS_DIR
+
+
+def _neutralize_tool_content(text: str) -> str:
+    """Escape XML-like tags in untrusted content to prevent prompt injection.
+
+    Replaces < and > so the model cannot interpret fetched content as
+    control instructions (e.g., fake <tool_call> tags inside a web page).
+    """
+    return text.replace('<', '&lt;').replace('>', '&gt;')
 
 
 def get_tool_definitions() -> str:
@@ -77,9 +87,15 @@ def format_tool_result(
         Formatted string for the tool result
     """
     if success:
-        return f"""<tool_result name="{tool_name}">
-{_format_result_content(tool_name, result)}
-</tool_result>"""
+        raw_content = _format_result_content(tool_name, result)
+        safe_content = _neutralize_tool_content(raw_content)
+        return (
+            f'<tool_result name="{tool_name}">\n'
+            f'<untrusted_tool_data source="{tool_name}">\n'
+            f'{safe_content}\n'
+            f'</untrusted_tool_data>\n'
+            f'</tool_result>'
+        )
     else:
         error_msg = result.get("message", "Unknown error")
         error_code = result.get("code", "error")
