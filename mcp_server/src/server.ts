@@ -332,6 +332,13 @@ async function handleJsonRpcRequest(request: JsonRpcRequest): Promise<JsonRpcRes
 }
 
 /**
+ * Determine whether the configured host is loopback-only.
+ */
+function isLocalhostBinding(host: string): boolean {
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+}
+
+/**
  * Create and configure Express app
  */
 export function createApp(): express.Application {
@@ -360,7 +367,18 @@ export function createApp(): express.Application {
   });
 
   // MCP endpoint
-  app.post('/mcp', async (req: Request, res: Response) => {
+  app.post('/mcp', (req: Request, res: Response, next: NextFunction) => {
+    // Enforce Bearer token auth when bound to a non-localhost address.
+    const host = config_values.host;
+    if (!isLocalhostBinding(host) && config_values.mcpAuthToken) {
+      const authHeader = req.headers['authorization'] || '';
+      if (authHeader !== `Bearer ${config_values.mcpAuthToken}`) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+    }
+    next();
+  }, async (req: Request, res: Response) => {
     try {
       const request = req.body as JsonRpcRequest;
 
@@ -426,6 +444,16 @@ export function startServer(): void {
   const app = createApp();
   const port = config_values.port;
   const host = config_values.host;
+
+  // Fail fast if binding to a non-localhost address without an auth token.
+  // This prevents accidental public exposure of the MCP endpoint.
+  if (!isLocalhostBinding(host) && !config_values.mcpAuthToken) {
+    logger.error(
+      'FATAL: MCP_AUTH_TOKEN must be set when HOST is not localhost. ' +
+      'Set MCP_AUTH_TOKEN or change HOST to localhost/127.0.0.1.'
+    );
+    process.exit(1);
+  }
 
   const server = app.listen(port, host, () => {
     logger.info({ port, host, searchProvider: config_values.searchProvider }, 'MCP Server started');

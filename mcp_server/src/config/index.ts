@@ -37,6 +37,9 @@ const ConfigSchema = z.object({
   rateLimitSearch: z.coerce.number().default(10),
   rateLimitFetch: z.coerce.number().default(30),
   rateLimitNotes: z.coerce.number().default(50),
+
+  // Auth — required when binding to non-localhost
+  mcpAuthToken: z.string().optional(),
 });
 
 type Config = z.infer<typeof ConfigSchema>;
@@ -60,6 +63,7 @@ function loadConfig(): Config {
     rateLimitSearch: process.env['RATE_LIMIT_SEARCH'],
     rateLimitFetch: process.env['RATE_LIMIT_FETCH'],
     rateLimitNotes: process.env['RATE_LIMIT_NOTES'],
+    mcpAuthToken: process.env['MCP_AUTH_TOKEN'],
   };
 
   const result = ConfigSchema.safeParse(rawConfig);

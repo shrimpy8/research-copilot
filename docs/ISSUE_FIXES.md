@@ -1202,7 +1202,7 @@ All 16 second-review issues addressed on branch `fix/second-review-16-issues`.
 ### Second Review — Verification
 
 **Verified by:** Claude Opus on 2026-05-13
-**Result:** 14/16 PASS — 2 items need attention
+**Result:** 16/16 PASS — all items resolved
 
 #### Verified PASS (14 items)
 
@@ -1222,20 +1222,10 @@ All 16 second-review issues addressed on branch `fix/second-review-16-issues`.
 | SR-13 | PASS — class constant `MAX_HISTORY = 20`; `self.MAX_HISTORY` in both methods |
 | SR-14 | PASS — `logger.exception()` at line 707 |
 
-#### Remaining Issues (2 items — need follow-up fixes)
+#### Resolved on Follow-up (2 items — now PASS)
 
-##### SR-9 (P2): `app.py:529` still exposes `save_result.error` in `st.error()`
-- **Status:** PARTIAL — Lines 397-398 and 531-532 are fixed (generic messages), but line 529 still has `st.error(f"Failed to save note: {save_result.error}")` which exposes internal error details to the user.
-- **Fix:** Replace with generic message:
-```python
-# Before (line 529):
-st.error(f"Failed to save note: {save_result.error}")
+##### SR-9 (P2): `app.py:529` — save_result.error exposure
+- **Status:** FIXED — `logger.warning("Failed to save note: %s", save_result.error)` logs the detail; `st.error("Failed to save note. Please try again.")` shows generic message to user.
 
-# After:
-logger.error("Failed to save note: %s", save_result.error)
-st.error("Failed to save note. Please try again.")
-```
-
-##### SR-15 (P3): Dead import of removed function in `src/ui/__init__.py`
-- **Status:** PARTIAL — Function removed from `components.py` but `src/ui/__init__.py` still exports `generate_followup_suggestions` (lines 34 and 81). This will cause `ImportError` if anything tries to import it from the `src.ui` module.
-- **Fix:** Remove `generate_followup_suggestions` from both the import line and the `__all__` list in `src/ui/__init__.py`.
+##### SR-15 (P3): Dead import in `src/ui/__init__.py`
+- **Status:** FIXED — `generate_followup_suggestions` removed from both the import line and `__all__` list.

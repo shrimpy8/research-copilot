@@ -247,7 +247,9 @@ class Orchestrator:
                 "content": llm_response
             })
 
-            # Add tool results as a new message
+            # Add tool results as a new message.
+            # Results are wrapped in <untrusted_tool_data> so the model treats
+            # them as external evidence, never as instructions.
             messages.append({
                 "role": "user",
                 "content": "Tool results:\n\n" + "\n\n".join(tool_results)
@@ -301,11 +303,26 @@ class Orchestrator:
         # Determine if response can be saved (non-error, has content)
         can_save = bool(final_response and not final_response.startswith("❌"))
 
-        # Generate LLM-based follow-up questions (PRD §5.10 Demo Polish Pack)
+        # Generate LLM-based follow-up questions (PRD §5.10 Demo Polish Pack).
+        # Skip when disabled by config or when the main response already consumed
+        # the maximum model-call budget, to avoid runaway latency/cost.
         deduplicated_sources = self._deduplicate_sources(sources)
-        followup_questions = await self._generate_followup_questions(
-            query, final_response, deduplicated_sources
-        )
+        llm_calls_made = iterations + (1 if not final_response else 0)
+        followup_over_budget = llm_calls_made >= self.MAX_TOOL_ITERATIONS
+        if settings.enable_followup_questions and not followup_over_budget:
+            followup_questions = await self._generate_followup_questions(
+                query, final_response, deduplicated_sources
+            )
+        else:
+            if not settings.enable_followup_questions:
+                logger.debug("Follow-up questions disabled via ENABLE_FOLLOWUP_QUESTIONS=false")
+            else:
+                logger.debug(
+                    "Skipping follow-up questions: main response used %d/%d model calls",
+                    llm_calls_made,
+                    self.MAX_TOOL_ITERATIONS
+                )
+            followup_questions = []
 
         return ResearchResponse(
             content=final_response,
