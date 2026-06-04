@@ -40,7 +40,6 @@ data/*.sqlite3
 result.txt
 
 # Internal docs (kept locally, not in repo)
-CLAUDE.md
 PROGRESS.md
 archive/
 
